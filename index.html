@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原神风格导航页</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 背景切换工具 -->
+    <div id="background-switcher" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: white; font-family: 'Orbitron', sans-serif;">
+        <h3 style="margin: 0 0 10px 0; font-size: 14px;">🌌 随机背景切换器</h3>
+        <button id="change-background" style="background: linear-gradient(45deg, #00BCD4, #9C27B0); border: none; padding: 8px 16px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+            🎲 切换背景
+        </button>
+        <button id="refresh-cards" style="background: linear-gradient(45deg, #FF6B6B, #4ECDC4); border: none; padding: 8px 16px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; margin-bottom: 10px; display: block; width: 100%;">
+            🎨 刷新卡片背景
+        </button>
+        <label style="display: block; margin-bottom: 10px; cursor: pointer; font-size: 12px;">
+            <input type="checkbox" id="pixiv-proxy-toggle" style="margin-right: 5px;"> 
+            🔬 启用Pixiv高级模式 (实验性)
+        </label>
+        <button id="hide-background-switcher" style="background: #666; border: none; padding: 4px 8px; border-radius: 3px; color: white; cursor: pointer; font-size: 12px;">
+            隐藏
+        </button>
+        <div style="font-size: 11px; margin-top: 8px; line-height: 1.3; max-width: 180px;">
+            🎯 随机切换背景图片（无跨域限制）<br/>
+            💫 页面加载时自动应用随机背景<br/>
+            🎨 卡片背景来自多个支持CORS的图片API<br/>
+            🔬 高级模式：尝试使用Pixiv反代获取精选图片<br/>
+            🎮 <strong>点击角色卡片打开对应网站</strong><br/>
+            ✨ 悬停卡片可看到发光特效<br/>
+            ⏸️ <strong>悬停时所有卡片停止旋转</strong>
+        </div>
+    </div>
+    
+    <script type="module" src="main.js"></script>
+    
+    <script>
+        // 背景切换功能
+        document.getElementById('change-background').addEventListener('click', function() {
+            // 调用主JS文件中的setRandomBackground函数
+            if (window.setRandomBackground) {
+                window.setRandomBackground();
+            } else {
+                alert('背景切换功能正在加载中，请稍后再试...');
+            }
+        });
+        
+        // 刷新卡片背景功能
+        document.getElementById('refresh-cards').addEventListener('click', function() {
+            // 调用主JS文件中的refreshAllCardBackgrounds函数
+            if (window.refreshAllCardBackgrounds) {
+                window.refreshAllCardBackgrounds();
+            } else {
+                alert('卡片刷新功能正在加载中，请稍后再试...');
+            }
+        });
+        
+        // 隐藏背景切换器
+        document.getElementById('hide-background-switcher').addEventListener('click', function() {
+            document.getElementById('background-switcher').style.display = 'none';
+        });
+        
+        // Pixiv高级模式开关
+        document.getElementById('pixiv-proxy-toggle').addEventListener('change', function() {
+            window.enablePixivProxy = this.checked;
+            if (this.checked) {
+                console.log('🔬 已启用Pixiv高级模式 - 将尝试使用反代获取高质量图片');
+                alert('⚠️ Pixiv高级模式已启用！\n\n注意：此模式使用反代服务，可能存在不稳定性。\n如果图片加载失败，会自动回退到安全模式。');
+            } else {
+                console.log('🛡️ 已关闭Pixiv高级模式 - 使用安全的CORS图片API');
+            }
+        });
+    </script>
+</body>
+</html>
