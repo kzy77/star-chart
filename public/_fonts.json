@@ -1,0 +1,21 @@
+{
+  "fonts": {
+    "google": {
+      "families": [
+        {
+          "family": "Orbitron",
+          "weights": [400, 700, 900],
+          "display": "swap"
+        }
+      ]
+    },
+    "optimizations": {
+      "prefetch": true,
+      "preconnect": true,
+      "preload": true,
+      "inlineCSS": true,
+      "minify": true,
+      "compress": true
+    }
+  }
+} 
