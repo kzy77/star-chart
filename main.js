@@ -14,76 +14,126 @@ const MAX_STAR_TRAILS = 10;
 let audioContext;
 let hoverSound, clickSound;
 
-// 从随机图片API获取图片URL
-async function getRandomImageUrl() {
-    try {
-        // 默认优先使用Pixiv反代
-        const pixivUrl = await getDuckMoImageWithProxy();
-        if (pixivUrl) {
-            return pixivUrl;
-        }
-        console.log('🔄 Pixiv反代失败，切换到安全模式');
+// 图片缓存系统
+const imageCache = {
+    images: [],
+    lastFetchTime: 0,
+    isFetching: false,
+    CACHE_TIMEOUT: 5 * 60 * 1000, // 缓存有效期：5分钟
+    MAX_CACHE_SIZE: 100, // 增加缓存容量
+    BATCH_SIZE: 20, // API最大批量获取数量
+    
+    async getImages(count) {
+        // 清理过期缓存
+        this.cleanExpiredCache();
         
-        // 优先使用支持CORS的随机图片API，避免Pixiv防盗链问题
-        console.log('🎨 使用无跨域限制的随机图片API');
-        return getFallbackImageUrl();
-    } catch (error) {
-        console.log('❌ 图片API请求失败:', error.message);
-        return getFallbackImageUrl();
+        // 如果缓存不足且没有正在获取中，进行一次性批量获取
+        if (this.images.length < count && !this.isFetching) {
+            // 计算需要获取的批次数
+            const batchesNeeded = Math.ceil((count - this.images.length) / this.BATCH_SIZE);
+            const promises = [];
+            
+            // 一次性发起所有批次的请求
+            for (let i = 0; i < batchesNeeded; i++) {
+                promises.push(this.prefetchImages());
+            }
+            
+            // 等待所有请求完成
+            await Promise.all(promises);
+        }
+        
+        // 返回随机的图片集合
+        return this.getRandomImages(count);
+    },
+    
+    getRandomImages(count) {
+        const shuffled = [...this.images].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, Math.min(count, shuffled.length));
+    },
+    
+    async prefetchImages() {
+        if (this.isFetching) {
+            return;
+        }
+        
+        this.isFetching = true;
+        try {
+            // 始终请求最大数量以减少API调用次数
+            const result = await fetchDuckMoImages({ num: this.BATCH_SIZE });
+            
+            if (result && result.data) {
+                // 添加新图片到缓存，避免重复
+                const newImages = result.data.filter(img => 
+                    !this.images.some(existing => existing.pictureUrl === img.pictureUrl)
+                );
+                this.images.push(...newImages);
+                
+                // 确保缓存不超过最大限制
+                if (this.images.length > this.MAX_CACHE_SIZE) {
+                    this.images = this.images.slice(-this.MAX_CACHE_SIZE);
+                }
+                this.lastFetchTime = Date.now();
+                console.log(`📦 缓存已更新: ${this.images.length} 张图片`);
+            }
+        } catch (error) {
+            console.error('获取新图片失败:', error);
+        } finally {
+            this.isFetching = false;
+        }
+    },
+    
+    cleanExpiredCache() {
+        const now = Date.now();
+        if (now - this.lastFetchTime > this.CACHE_TIMEOUT) {
+            this.images = [];
+            this.lastFetchTime = 0;
+            console.log('🧹 清理过期缓存');
+        }
     }
-}
-
-// 支持CORS的图片API函数
-function getFallbackImageUrl() {
-    
-    // 备用方案：生成SVG渐变图片（完全无CORS限制）
-    const colors = [
-        ['#667eea', '#764ba2'],
-        ['#f093fb', '#f5576c'], 
-        ['#4facfe', '#00f2fe'],
-        ['#43e97b', '#38f9d7'],
-        ['#fa709a', '#fee140'],
-        ['#a8edea', '#fed6e3'],
-        ['#ff9a9e', '#fecfef'],
-        ['#a18cd1', '#fbc2eb']
-    ];
-    const randomColorPair = colors[Math.floor(Math.random() * colors.length)];
-    
-    const svgContent = `
-        <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:${randomColorPair[0]};stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:${randomColorPair[1]};stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grad1)" />
-        </svg>
-    `;
-    
-    return 'data:image/svg+xml;base64,' + btoa(svgContent);
-}
+};
 
 // 优化的 DuckMo API 请求函数
 async function fetchDuckMoImages(options = {}) {
     const {
-        num = 1,
+        num = 20, // 默认请求最大数量
         dateAfter = null,
         dateBefore = null
     } = options;
 
     try {
+        // 智能控制请求频率
+        const now = Date.now();
+        const minInterval = 2000; // 最小请求间隔2秒
+        
+        if (window.lastFetchTime && (now - window.lastFetchTime < minInterval)) {
+            await new Promise(resolve => setTimeout(resolve, minInterval));
+        }
+        
+        window.lastFetchTime = now;
+
         const response = await fetch('https://api.mossia.top/duckMo/x', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                num: Math.min(Math.max(num, 1), 20), // 确保 num 在 1-20 范围内
+                num: 20, // 固定请求最大数量
                 ...(dateAfter && { dateAfter }),
                 ...(dateBefore && { dateBefore })
             })
         });
+
+        if (!response.ok) {
+            if (response.status === 429) {
+                console.log('⚠️ API 请求过于频繁，切换到备用图片...');
+                return { success: true, data: Array(num).fill().map(() => ({
+                    url: getFallbackImageUrl(),
+                    pictureUrl: getFallbackImageUrl(),
+                    xCreateDate: Date.now()
+                }))};
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
         const result = await response.json();
         
@@ -99,19 +149,78 @@ async function fetchDuckMoImages(options = {}) {
     }
 }
 
+// 从随机图片API获取图片URL
+async function getRandomImageUrl() {
+    try {
+        // 默认优先使用Pixiv反代
+        const pixivUrl = await getDuckMoImageWithProxy();
+        if (pixivUrl) {
+            return pixivUrl;
+        }
+        
+        console.log('🔄 切换到备用图片模式');
+        return getFallbackImageUrl();
+    } catch (error) {
+        console.log('❌ 图片获取失败:', error.message);
+        return getFallbackImageUrl();
+    }
+}
+
+// 支持CORS的备用图片API函数
+function getFallbackImageUrl() {
+    // 扩展渐变色组合
+    const colors = [
+        ['#667eea', '#764ba2'],
+        ['#f093fb', '#f5576c'], 
+        ['#4facfe', '#00f2fe'],
+        ['#43e97b', '#38f9d7'],
+        ['#fa709a', '#fee140'],
+        ['#a8edea', '#fed6e3'],
+        ['#ff9a9e', '#fecfef'],
+        ['#a18cd1', '#fbc2eb'],
+        ['#fad0c4', '#ffd1ff'],
+        ['#ffecd2', '#fcb69f'],
+        ['#ff8177', '#b12a5b'],
+        ['#48c6ef', '#6f86d6'],
+        ['#0ba360', '#3cba92'],
+        ['#f77062', '#fe5196']
+    ];
+    
+    const randomColorPair = colors[Math.floor(Math.random() * colors.length)];
+    
+    // 增强SVG渐变效果
+    const svgContent = `
+        <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${randomColorPair[0]};stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:${randomColorPair[1]};stop-opacity:0.8" />
+                    <stop offset="100%" style="stop-color:${randomColorPair[0]};stop-opacity:1" />
+                </linearGradient>
+                <pattern id="pattern1" width="70" height="70" patternUnits="userSpaceOnUse">
+                    <circle cx="35" cy="35" r="25" fill="url(#grad1)" opacity="0.3" />
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grad1)" />
+            <rect width="100%" height="100%" fill="url(#pattern1)" />
+            <circle cx="400" cy="300" r="200" fill="url(#grad1)" opacity="0.4" />
+        </svg>
+    `;
+    
+    return 'data:image/svg+xml;base64,' + btoa(svgContent);
+}
+
 // 更新后的 getDuckMoImageWithProxy 函数
 async function getDuckMoImageWithProxy() {
     try {
         // 获取当前卡片数量
         const currentCardCount = cards.length;
         
-        // 根据卡片数量决定请求数量
-        const requestNum = currentCardCount < 20 ? 1 : Math.min(currentCardCount, 20);
+        // 从缓存获取图片
+        const cachedImages = await imageCache.getImages(currentCardCount);
         
-        const result = await fetchDuckMoImages({ num: requestNum });
-        
-        if (result && result.data && result.data.length > 0) {
-            const randomImageData = result.data[Math.floor(Math.random() * result.data.length)];
+        if (cachedImages && cachedImages.length > 0) {
+            const randomImageData = cachedImages[Math.floor(Math.random() * cachedImages.length)];
             
             if (randomImageData.pictureUrl) {
                 // 使用反代服务来避免CORS和防盗链问题
