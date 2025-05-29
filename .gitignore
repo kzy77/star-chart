@@ -26,6 +26,7 @@ Thumbs.db
 # Env
 .env
 .env.*
+!.env.example
 
 # Misc
 *.local
@@ -47,4 +48,8 @@ coverage/
 *.webp
 
 # Optional: ignore Playwright/test output
-playwright-report/ 
+playwright-report/
+
+# Additional changes from the code block
+.output/
+.cloudflare/ 
