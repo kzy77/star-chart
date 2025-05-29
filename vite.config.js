@@ -5,11 +5,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    target: 'es2015',
+    minify: 'terser',
+    terserOptions: {
+      format: {
+        comments: false
+      }
+    },
     rollupOptions: {
-      // 禁用原生优化以避免平台特定的依赖问题
-      context: 'globalThis',
-      treeshake: {
-        moduleSideEffects: true
+      output: {
+        manualChunks: undefined
       }
     }
   },
