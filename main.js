@@ -64,20 +64,60 @@ function getFallbackImageUrl() {
     return 'data:image/svg+xml;base64,' + btoa(svgContent);
 }
 
-// 尝试获取DuckMo Pixiv图片（需要反代服务）
-async function getDuckMoImageWithProxy() {
+// 优化的 DuckMo API 请求函数
+async function fetchDuckMoImages(options = {}) {
+    const {
+        num = 1,
+        dateAfter = null,
+        dateBefore = null
+    } = options;
+
     try {
-        const response = await fetch('https://api.mossia.top/duckMo/x');
+        const response = await fetch('https://api.mossia.top/duckMo/x', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                num: Math.min(Math.max(num, 1), 20), // 确保 num 在 1-20 范围内
+                ...(dateAfter && { dateAfter }),
+                ...(dateBefore && { dateBefore })
+            })
+        });
+
         const result = await response.json();
         
-        if (result.success && result.data && result.data.length > 0) {
+        if (!result.success) {
+            console.log('❌ DuckMo API 请求失败:', result.message);
+            return null;
+        }
+
+        return result;
+    } catch (error) {
+        console.log('❌ DuckMo API 请求失败:', error.message);
+        return null;
+    }
+}
+
+// 更新后的 getDuckMoImageWithProxy 函数
+async function getDuckMoImageWithProxy() {
+    try {
+        // 获取当前卡片数量
+        const currentCardCount = cards.length;
+        
+        // 根据卡片数量决定请求数量
+        const requestNum = currentCardCount < 20 ? 1 : Math.min(currentCardCount, 20);
+        
+        const result = await fetchDuckMoImages({ num: requestNum });
+        
+        if (result && result.data && result.data.length > 0) {
             const randomImageData = result.data[Math.floor(Math.random() * result.data.length)];
             
-            if (randomImageData.urlsList && randomImageData.urlsList.length > 0) {
-                const randomUrl = randomImageData.urlsList[Math.floor(Math.random() * randomImageData.urlsList.length)];
+            if (randomImageData.pictureUrl) {
                 // 使用反代服务来避免CORS和防盗链问题
-                const proxyUrl = randomUrl.url.replace('https://i.pixiv.re/', 'https://i.pixiv.cat/');
-                console.log(`🎨 获取到Pixiv图片(反代): ${randomImageData.title} by ${randomImageData.author}`);
+                const proxyUrl = randomImageData.pictureUrl.replace('https://i.pixiv.re/', 'https://i.pixiv.cat/');
+                console.log(`🎨 获取到Pixiv图片: ${randomImageData.url}`);
+                console.log(`📅 创建时间: ${new Date(randomImageData.xCreateDate).toLocaleString()}`);
                 return proxyUrl;
             }
         }
