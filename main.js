@@ -63,7 +63,7 @@ const imageCache = {
             
             if (result && result.data) {
                 const processedImages = result.data.map(item => {
-                    const originalUrl = item.urlsList.find(urlItem => urlItem.urlSize === 'original');
+                    const originalUrl = item.urlsList.find(urlItem => urlItem.urlSize === 'regular');
                     return {
                         ...item,
                         pictureUrl: originalUrl ? originalUrl.url : item.urlsList[0]?.url || getFallbackImageUrl()
@@ -104,6 +104,7 @@ const imageCache = {
 async function fetchDuckMoImages(options = {}) {
     const {
         num = 20, // 默认请求最大数量
+        sizeList = ['regular'],
         dateAfter = null,
         dateBefore = null
     } = options;
@@ -127,6 +128,7 @@ async function fetchDuckMoImages(options = {}) {
             },
             body: JSON.stringify({
                 num: 20, // 固定请求最大数量
+                sizeList: ['regular'],
                 ...(dateAfter && { dateAfter }),
                 ...(dateBefore && { dateBefore })
             })
