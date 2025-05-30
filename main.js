@@ -128,6 +128,7 @@ async function fetchDuckMoImages(options = {}) {
             },
             body: JSON.stringify({
                 num: 20, // 固定请求最大数量
+                r18Type: 0, // r18 类型 0-不是 1-是
                 sizeList: ['regular'],
                 ...(dateAfter && { dateAfter }),
                 ...(dateBefore && { dateBefore })
@@ -1262,50 +1263,70 @@ function createCardTexture(character, backgroundImageUrl = null) {
     ctx.fillText(elementSymbol, 128, 70);
     ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 第6层：文字内容（金色系，提高可读性）
-    // 角色名称（淡金色）
+    // 第6层：文字内容（更深色调，增强阴影效果）
+    // 角色名称（深金色）
     ctx.font = 'bold 24px Orbitron, Arial';
-    const goldNameColor = 'rgba(255, 223, 150, 0.98)'; // 淡金色
+    const goldNameColor = 'rgba(255, 215, 0, 0.98)'; // 金色
     ctx.fillStyle = goldNameColor;
     ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; // 强阴影确保在任何背景上可读
-    ctx.shadowBlur = 12; // 大阴影模糊半径
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'; // 更深的阴影
+    ctx.shadowBlur = 15; // 增大阴影模糊半径
+    ctx.shadowOffsetX = 2; // 添加水平偏移
+    ctx.shadowOffsetY = 2; // 添加垂直偏移
     ctx.fillText(character.name, 128, 140);
     
-    // 元素/武器信息（淡蓝色）
+    // 元素/武器信息（深蓝色）
     ctx.font = '16px Orbitron, Arial';
-    const infoColor = 'rgba(180, 230, 255, 0.95)'; // 淡蓝色
+    const infoColor = 'rgba(150, 200, 255, 0.98)'; // 更深的蓝色
     ctx.fillStyle = infoColor;
-    ctx.shadowBlur = 10; // 保持较强阴影
+    ctx.shadowBlur = 12; // 保持较强阴影
     ctx.fillText(`${character.vision} · ${character.weapon}`, 128, 165);
     
-    // 地区（浅紫色）
+    // 地区（深紫色）
     ctx.font = '14px Orbitron, Arial';
-    const regionColor = 'rgba(220, 190, 255, 0.9)'; // 浅紫色
+    const regionColor = 'rgba(190, 160, 255, 0.95)'; // 更深的紫色
     ctx.fillStyle = regionColor;
-    ctx.shadowBlur = 8; // 保持较强阴影
+    ctx.shadowBlur = 10; // 保持较强阴影
     ctx.fillText(character.region, 128, 185);
     
-    // 星级（非常微弱）
+    // 星级（强化）
     const starY = 220;
-    ctx.globalAlpha = 0.25; // 全局极低不透明度
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'; // 加强星星阴影
-    ctx.shadowBlur = 3; // 较小阴影模糊半径
+    ctx.globalAlpha = 0.5; // 提高不透明度
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; // 加强星星阴影
+    ctx.shadowBlur = 4; // 增加阴影模糊半径
     for (let i = 0; i < character.rarity; i++) {
         const starX = 128 - (character.rarity - 1) * 12 + i * 24;
-        ctx.fillStyle = 'rgba(255, 223, 150, 0.6)'; // 淡金色星星
-        ctx.font = '16px Arial'; // 更小的星星
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.8)'; // 更不透明的金色星星
+        ctx.font = '16px Arial';
         ctx.fillText('★', starX, starY);
     }
     ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 描述（淡金色）
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-    ctx.shadowBlur = 10;
+    // 描述（深金色）
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 1.5; // 添加轻微偏移
+    ctx.shadowOffsetY = 1.5;
     ctx.font = '13px Orbitron, Arial';
-    ctx.fillStyle = 'rgba(255, 223, 150, 0.9)'; // 淡金色，与角色名称统一
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.95)'; // 更深的金色
     ctx.fillText(character.description, 128, 260);
-    ctx.shadowBlur = 0; // 清除阴影效果
+    
+    // 添加文字背景区域（半透明深色区域）
+    const textAreaHeight = 150;
+    const textAreaY = 320 - textAreaHeight;
+    const gradient = ctx.createLinearGradient(0, textAreaY, 0, 320);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // 顶部完全透明
+    gradient.addColorStop(0.2, 'rgba(0, 0, 0, 0.4)'); // 渐变到半透明
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)'); // 底部更不透明
+    
+    // 绘制文字背景区域
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, textAreaY, 256, textAreaHeight);
+    
+    // 清除阴影效果
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     
     // 纯净简约风格，去除所有多余的装饰元素
     
