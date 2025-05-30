@@ -493,7 +493,7 @@ function createDefaultCardBackground(ctx, character) {
 const genshinCharacters = [
     { 
         name: '甘雨', 
-        url: 'https://docker-hub.chunkj.dpdns.org', 
+        url: 'https://docker.chunkj.dpdns.org', 
         element: '冰', 
         rarity: 5, 
         color: '#4A90E2', 
@@ -553,7 +553,7 @@ const genshinCharacters = [
     },
     { 
         name: '八重神子', 
-        url: 'https://docker-fast.chunkj.dpdns.org', 
+        url: 'https://docker.chunkj.us.to', 
         element: '雷', 
         rarity: 5, 
         color: '#E91E63', 
