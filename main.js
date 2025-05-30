@@ -355,9 +355,218 @@ function setDefaultBackground() {
     // 显示覆盖层
     setTimeout(() => {
         overlay.style.opacity = '1';
+        // 更新标题颜色以适应背景
+        updateTitleColors();
     }, 100);
     
     console.log('✨ 默认背景已设置');
+}
+
+// 根据背景颜色动态调整标题颜色
+function updateTitleColors() {
+    // 获取页面上的h1标题和段落元素
+    const title = document.querySelector('#info h1');
+    const paragraphs = document.querySelectorAll('#info p');
+    
+    // 背景颜色分析
+    if (document.body.style.backgroundImage && 
+        document.body.style.backgroundImage !== 'none' &&
+        !document.body.style.backgroundImage.includes('data:') && 
+        !document.body.style.backgroundImage.includes('gradient')) {
+        
+        // 尝试从当前背景中提取URL
+        let bgUrl = document.body.style.backgroundImage;
+        bgUrl = bgUrl.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
+        
+        if (bgUrl && !bgUrl.startsWith('data:')) {
+            // 创建一个临时图像并获取其颜色
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = function() {
+                try {
+                    // 创建一个小型Canvas来分析主要颜色
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = 10; // 小尺寸，足够分析
+                    canvas.width = size;
+                    canvas.height = size;
+                    
+                    // 绘制并缩放图像以分析整体颜色
+                    ctx.drawImage(img, 0, 0, size, size);
+                    
+                    // 采样顶部区域颜色（标题所在区域）
+                    const topPixels = ctx.getImageData(0, 0, size, Math.floor(size/4)).data;
+                    
+                    // 计算平均颜色
+                    let r = 0, g = 0, b = 0, count = 0;
+                    for (let i = 0; i < topPixels.length; i += 4) {
+                        r += topPixels[i];
+                        g += topPixels[i+1];
+                        b += topPixels[i+2];
+                        count++;
+                    }
+                    
+                    if (count > 0) {
+                        r = Math.floor(r / count);
+                        g = Math.floor(g / count);
+                        b = Math.floor(b / count);
+                        
+                        // 计算颜色亮度
+                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                        
+                        // 创建主题色和互补色
+                        const mainColor = { r, g, b };
+                        const compColor = getComplementaryColor(mainColor);
+                        
+                        // 应用高对比度渐变文本
+                        applyGradientText(title, mainColor, compColor, brightness);
+                        
+                        // 为段落应用对比色，确保可读性
+                        applyParagraphColors(paragraphs, brightness);
+                    } else {
+                        // 如果计算失败，使用默认渐变色
+                        applyDefaultGradient(title, paragraphs);
+                    }
+                } catch (e) {
+                    console.log('颜色分析失败，使用默认渐变:', e.message);
+                    applyDefaultGradient(title, paragraphs);
+                }
+            };
+            img.onerror = function() {
+                console.log('背景图片加载失败，使用默认渐变');
+                applyDefaultGradient(title, paragraphs);
+            };
+            img.src = bgUrl;
+        } else {
+            // URL 无效，使用默认渐变
+            applyDefaultGradient(title, paragraphs);
+        }
+    } else {
+        // 使用预定义的渐变
+        applyDefaultGradient(title, paragraphs);
+    }
+}
+
+// 获取互补色
+function getComplementaryColor(color) {
+    return { 
+        r: 255 - color.r, 
+        g: 255 - color.g, 
+        b: 255 - color.b 
+    };
+}
+
+// 应用渐变文本
+function applyGradientText(element, color1, color2, brightness) {
+    if (!element) return;
+    
+    // 确保渐变色足够亮以便于阅读
+    const enhancedColor1 = enhanceColor(color1, brightness);
+    const enhancedColor2 = enhanceColor(color2, brightness);
+    
+    // 应用渐变背景
+    element.style.background = `linear-gradient(135deg, 
+        rgb(${enhancedColor1.r}, ${enhancedColor1.g}, ${enhancedColor1.b}), 
+        rgb(${enhancedColor2.r}, ${enhancedColor2.g}, ${enhancedColor2.b}))`;
+    element.style.webkitBackgroundClip = 'text';
+    element.style.backgroundClip = 'text';
+    element.style.webkitTextFillColor = 'transparent';
+    element.style.color = 'transparent';
+    
+    // 添加文字阴影，增强可读性
+    element.style.textShadow = brightness < 128 ? 
+        '0 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7)' : 
+        '0 2px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 0, 0, 0.5)';
+}
+
+// 增强颜色使其更亮、更适合文本显示
+function enhanceColor(color, backgroundBrightness) {
+    const MIN_BRIGHTNESS = 200; // 确保颜色足够亮
+    
+    // 如果背景暗，增加颜色亮度
+    if (backgroundBrightness < 128) {
+        // 增加亮度但保持色调
+        const currentBrightness = (color.r + color.g + color.b) / 3;
+        if (currentBrightness < MIN_BRIGHTNESS) {
+            const factor = MIN_BRIGHTNESS / Math.max(currentBrightness, 1);
+            return {
+                r: Math.min(255, Math.round(color.r * factor)),
+                g: Math.min(255, Math.round(color.g * factor)),
+                b: Math.min(255, Math.round(color.b * factor))
+            };
+        }
+    }
+    
+    // 背景亮时，确保文字颜色足够深
+    if (backgroundBrightness > 200) {
+        const currentBrightness = (color.r + color.g + color.b) / 3;
+        if (currentBrightness > 180) {
+            const factor = 160 / Math.max(currentBrightness, 1);
+            return {
+                r: Math.round(color.r * factor),
+                g: Math.round(color.g * factor),
+                b: Math.round(color.b * factor)
+            };
+        }
+    }
+    
+    return color;
+}
+
+// 为段落应用颜色
+function applyParagraphColors(paragraphs, brightness) {
+    if (!paragraphs || !paragraphs.length) return;
+    
+    paragraphs.forEach(p => {
+        // 根据背景亮度决定文字颜色
+        if (brightness < 128) {
+            // 暗背景，使用亮色文字
+            p.style.color = 'rgba(255, 255, 255, 0.9)';
+            p.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.9), 0 0 5px rgba(0, 0, 0, 0.7)';
+        } else {
+            // 亮背景，使用深色文字
+            p.style.color = 'rgba(30, 30, 30, 0.9)';
+            p.style.textShadow = '0 1px 2px rgba(255, 255, 255, 0.7), 0 0 5px rgba(0, 0, 0, 0.5)';
+        }
+    });
+}
+
+// 应用默认渐变
+function applyDefaultGradient(title, paragraphs) {
+    if (!title) return;
+    
+    // 原神风格的明亮渐变色
+    const genshinColors = [
+        { r: 255, g: 215, b: 0 },   // 金色
+        { r: 255, g: 105, b: 180 }, // 热粉色
+        { r: 138, g: 43, b: 226 },  // 蓝紫色
+        { r: 64, g: 224, b: 208 }   // 绿松石色
+    ];
+    
+    // 随机选择两种颜色
+    const color1 = genshinColors[Math.floor(Math.random() * genshinColors.length)];
+    let color2;
+    do {
+        color2 = genshinColors[Math.floor(Math.random() * genshinColors.length)];
+    } while (color1 === color2);
+    
+    // 应用渐变文本
+    title.style.background = `linear-gradient(135deg, 
+        rgb(${color1.r}, ${color1.g}, ${color1.b}), 
+        rgb(${color2.r}, ${color2.g}, ${color2.b}))`;
+    title.style.webkitBackgroundClip = 'text';
+    title.style.backgroundClip = 'text';
+    title.style.webkitTextFillColor = 'transparent';
+    title.style.color = 'transparent';
+    title.style.textShadow = '0 2px 4px rgba(0, 0, 0, 0.7)';
+    
+    // 为段落应用统一样式
+    if (paragraphs && paragraphs.length) {
+        paragraphs.forEach(p => {
+            p.style.color = 'rgba(255, 255, 255, 0.9)';
+            p.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 0, 0, 0.6)';
+        });
+    }
 }
 
 // 异步加载图片并应用到背景和卡片
@@ -515,6 +724,9 @@ function applyBackgroundImage(imageUrl) {
         document.body.style.backgroundRepeat = 'no-repeat';
         document.body.style.backgroundAttachment = 'fixed';
         
+        // 更新标题颜色以适应新背景
+        setTimeout(updateTitleColors, 500);
+        
         console.log('✨ 背景图片已更新!');
         showNotification('🌌 背景已切换！', 'success');
     };
@@ -640,6 +852,9 @@ async function init() {
     // 异步加载图片并应用
     setTimeout(() => {
         loadAndApplyImages();
+        
+        // 初始化时适配标题颜色
+        updateTitleColors();
     }, 1000);
     
     // 事件监听
@@ -675,49 +890,11 @@ async function setRandomBackground() {
 
 // 显示通知消息
 function showNotification(message, type = 'info') {
-    // 创建通知元素
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: ${type === 'success' ? 'rgba(76, 175, 80, 0.9)' : 
-                     type === 'warning' ? 'rgba(255, 152, 0, 0.9)' : 
-                     'rgba(33, 150, 243, 0.9)'};
-        color: white;
-        padding: 12px 24px;
-        border-radius: 25px;
-        font-family: 'Orbitron', sans-serif;
-        font-size: 14px;
-        font-weight: bold;
-        z-index: 10000;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
-        opacity: 0;
-        transition: all 0.3s ease-in-out;
-        pointer-events: none;
-    `;
-    notification.textContent = message;
+    // 禁用所有通知
+    return;
     
-    document.body.appendChild(notification);
-    
-    // 显示动画
-    setTimeout(() => {
-        notification.style.opacity = '1';
-        notification.style.transform = 'translateX(-50%) translateY(10px)';
-    }, 100);
-    
-    // 自动隐藏
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(-50%) translateY(-20px)';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
+    // 以下代码不会执行
+    // ... existing code ...
 }
 
 // 将函数暴露到全局作用域供HTML调用

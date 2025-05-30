@@ -7,8 +7,10 @@
     <meta name="description" content="一个基于Three.js的原神风格3D卡片导航页面">
     <meta name="keywords" content="原神, 3D, 导航, Three.js, WebGL">
     <meta name="author" content="Chunk">
+    <!-- 修复Permissions-Policy -->
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=(), accelerometer=(), autoplay=(), camera=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), sync-xhr=(), usb=()">
     <!-- 安全策略 - 更新图片URL格式 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.cloudflare.com https://www.cloudflare.com; font-src 'self' https://fonts.cloudflare.com https://www.cloudflare.com; img-src 'self' data: https://*.imgur.com https://*.pixiv.re https://*.pixiv.cat https://*.pixiv.net blob: /api/image-proxy/ /api/duckmo http://localhost:*; connect-src 'self' https://api.mossia.top http://localhost:*; worker-src 'self' blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.cloudflare.com https://www.cloudflare.com; font-src 'self' https://fonts.cloudflare.com https://www.cloudflare.com; img-src 'self' data: https://*.imgur.com https://*.pixiv.re https://*.pixiv.cat https://*.pixiv.net blob: https: http: http://localhost:*; connect-src 'self' https://api.mossia.top http://localhost:*; worker-src 'self' blob:;">
     <!-- 引用本地样式 -->
     <link rel="stylesheet" href="style.css">
     <!-- 使用Cloudflare CDN加载字体 -->
@@ -58,15 +60,15 @@
         #info h1 {
             font-size: 24px;
             margin-bottom: 5px;
-            background: linear-gradient(135deg, #FFD700, #FF69B4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.7));
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+            transition: color 0.8s ease, text-shadow 0.8s ease;
         }
         
         #info p {
             font-size: 16px;
             margin: 5px 0;
+            transition: color 0.5s ease, text-shadow 0.5s ease;
         }
         
         #background-switcher {
