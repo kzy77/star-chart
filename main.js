@@ -1438,7 +1438,7 @@ function animate() {
         const meta = cardMetas[i];
         
         if (hoveredCardIndex === i) {
-            meta.targetScale = 1.4;
+            meta.targetScale = 2;
             meta.hovered = true;
         } else {
             meta.targetScale = 1;
@@ -1502,7 +1502,11 @@ function animate() {
         card.position.set(cardX, cardY, cardZ);
         
         // 根据位置调整卡片朝向，确保顶部时正面朝向观察者
-        if (angleNormalized >= Math.PI * 0.3 && angleNormalized <= Math.PI * 0.7) {
+        if (meta.hovered) {
+            // 悬停时，始终让卡片正面朝向相机，确保正立
+            card.lookAt(camera.position);
+            card.rotation.z = Math.sin(time * 6) * 0.15;
+        } else if (angleNormalized >= Math.PI * 0.3 && angleNormalized <= Math.PI * 0.7) {
             // 在顶部附近时，让卡片正面朝向观察者（相机）
             card.lookAt(camera.position);
         } else {
@@ -1519,7 +1523,6 @@ function animate() {
         
         // 悬停效果
         if (meta.hovered) {
-            card.rotation.z = Math.sin(time * 6) * 0.15;
             // 悬停时的额外闪烁效果
             card.material.opacity = Math.min(1, depthOpacity + 0.2 + Math.sin(time * 10) * 0.1);
         } else {
