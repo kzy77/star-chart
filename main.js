@@ -1238,55 +1238,91 @@ function createCardTexture(character, backgroundImageUrl = null) {
     ctx.globalAlpha = 1.0; // 恢复不透明度
     
     // 第5层：绘制头像（简化版）
-    // 绘制简单的圆形头像背景
-    ctx.beginPath();
-    ctx.arc(128, 60, 40, 0, Math.PI * 2);
-    ctx.fillStyle = character.rarity === 5 ? 'rgba(20, 20, 40, 0.4)' : 'rgba(20, 20, 40, 0.3)';
-    ctx.fill();
-    
-    // 添加简单的元素符号
-    ctx.globalAlpha = 0.08; // 极低的不透明度
-    let elementSymbol = '';
-    switch(character.vision) {
-        case '冰': elementSymbol = '❄️'; break;
-        case '火': elementSymbol = '🔥'; break;
-        case '雷': elementSymbol = '⚡'; break;
-        case '岩': elementSymbol = '🗿'; break;
-        case '风': elementSymbol = '💨'; break;
-        case '水': elementSymbol = '💧'; break;
-        default: elementSymbol = '✨';
-    }
-    
-    ctx.font = '24px Arial'; // 更小的字体
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fillText(elementSymbol, 128, 70);
-    ctx.globalAlpha = 1.0; // 恢复不透明度
+    // 不再绘制中心圆形头像和元素符号
+    // 所有元素信息已移至左上角六边形
     
     // 第6层：文字内容（更深色调，增强阴影效果）
-    // 角色名称（深金色）
-    ctx.font = 'bold 24px Orbitron, Arial';
+    // 角色名称（深金色，增强可读性）
+    ctx.font = 'bold 26px Orbitron, Arial'; // 增大字号
     const goldNameColor = 'rgba(255, 215, 0, 0.98)'; // 金色
     ctx.fillStyle = goldNameColor;
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'; // 更深的阴影
-    ctx.shadowBlur = 15; // 增大阴影模糊半径
+    ctx.shadowBlur = 18; // 增大阴影模糊半径
     ctx.shadowOffsetX = 2; // 添加水平偏移
     ctx.shadowOffsetY = 2; // 添加垂直偏移
     ctx.fillText(character.name, 128, 140);
     
-    // 元素/武器信息（深蓝色）
-    ctx.font = '16px Orbitron, Arial';
-    const infoColor = 'rgba(150, 200, 255, 0.98)'; // 更深的蓝色
-    ctx.fillStyle = infoColor;
-    ctx.shadowBlur = 12; // 保持较强阴影
-    ctx.fillText(`${character.vision} · ${character.weapon}`, 128, 165);
+    // 左上角元素属性框
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    
+    // 根据元素类型设置不同的颜色
+    let elementColor;
+    switch(character.vision) {
+        case '冰': elementColor = 'rgba(80, 170, 255, 0.9)'; break;
+        case '火': elementColor = 'rgba(255, 100, 80, 0.9)'; break;
+        case '雷': elementColor = 'rgba(180, 90, 255, 0.9)'; break;
+        case '岩': elementColor = 'rgba(255, 180, 60, 0.9)'; break;
+        case '风': elementColor = 'rgba(80, 230, 150, 0.9)'; break;
+        case '水': elementColor = 'rgba(50, 150, 255, 0.9)'; break;
+        default: elementColor = 'rgba(200, 200, 200, 0.9)';
+    }
+    
+    // 绘制元素背景框
+    const elementBoxSize = 40;
+    const elementPadding = 10;
+    const elementBoxX = elementPadding;
+    const elementBoxY = elementPadding;
+    
+    // 绘制带边框的六边形
+    ctx.beginPath();
+    const hexRadius = elementBoxSize / 2;
+    const hexCenterX = elementBoxX + hexRadius;
+    const hexCenterY = elementBoxY + hexRadius;
+    
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI / 3) - Math.PI / 6;
+        const x = hexCenterX + hexRadius * Math.cos(angle);
+        const y = hexCenterY + hexRadius * Math.sin(angle);
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.closePath();
+    
+    // 填充六边形
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fill();
+    
+    // 绘制六边形边框
+    ctx.strokeStyle = elementColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // 绘制元素文字
+    ctx.font = 'bold 22px Orbitron, Arial';
+    ctx.fillStyle = elementColor;
+    ctx.fillText(character.vision, hexCenterX, hexCenterY + 7);
+    
+    // 只显示武器类型信息（已移除元素属性）
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 18px Orbitron, Arial'; // 增大字号并加粗
+    ctx.fillStyle = 'rgba(150, 200, 255, 0.98)'; // 蓝色
+    ctx.shadowBlur = 15; // 增强阴影
+    ctx.shadowOffsetX = 1.5;
+    ctx.shadowOffsetY = 1.5;
+    ctx.fillText(`${character.weapon}`, 128, 165);
     
     // 地区（深紫色）
-    ctx.font = '14px Orbitron, Arial';
+    ctx.font = 'bold 16px Orbitron, Arial'; // 加粗并增大字号
     const regionColor = 'rgba(190, 160, 255, 0.95)'; // 更深的紫色
     ctx.fillStyle = regionColor;
-    ctx.shadowBlur = 10; // 保持较强阴影
+    ctx.shadowBlur = 12; // 增强阴影
     ctx.fillText(character.region, 128, 185);
     
     // 星级（强化）
@@ -1302,14 +1338,53 @@ function createCardTexture(character, backgroundImageUrl = null) {
     }
     ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 描述（深金色）
+    // 描述（网站名称）- 使其更加醒目
+    // 先绘制醒目的背景区域
+    const descriptionY = 255;
+    const descriptionHeight = 30;
+    const descBackgroundY = descriptionY - 20;
+    
+    // 绘制一个特殊的醒目背景
+    ctx.fillStyle = character.rarity === 5 ? 
+        'rgba(255, 215, 0, 0.25)' : // 5星角色使用金色背景
+        'rgba(147, 112, 219, 0.25)'; // 4星角色使用紫色背景
+    
+    // 圆角矩形背景
+    const bgWidth = 220;
+    const bgX = (256 - bgWidth) / 2;
+    ctx.beginPath();
+    ctx.roundRect(bgX, descBackgroundY, bgWidth, descriptionHeight, 8);
+    ctx.fill();
+    
+    // 添加边框效果
+    ctx.strokeStyle = character.rarity === 5 ? 
+        'rgba(255, 215, 0, 0.5)' : // 5星角色使用金色边框
+        'rgba(147, 112, 219, 0.5)'; // 4星角色使用紫色边框
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // 文字阴影和样式
     ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
     ctx.shadowBlur = 12;
-    ctx.shadowOffsetX = 1.5; // 添加轻微偏移
+    ctx.shadowOffsetX = 1.5;
     ctx.shadowOffsetY = 1.5;
-    ctx.font = '13px Orbitron, Arial';
-    ctx.fillStyle = 'rgba(255, 200, 100, 0.95)'; // 更深的金色
-    ctx.fillText(character.description, 128, 260);
+    ctx.font = 'bold 16px Orbitron, Arial'; // 增大字体并加粗
+    ctx.fillStyle = character.rarity === 5 ? 
+        'rgba(255, 220, 120, 0.98)' : // 5星角色使用更亮的金色
+        'rgba(230, 210, 255, 0.98)'; // 4星角色使用更亮的紫色
+    ctx.fillText(character.description, 128, descriptionY);
+    
+    // 添加发光效果
+    ctx.shadowColor = character.rarity === 5 ? 
+        'rgba(255, 215, 0, 0.8)' : // 5星角色使用金色发光
+        'rgba(147, 112, 219, 0.8)'; // 4星角色使用紫色发光
+    ctx.shadowBlur = 15;
+    ctx.fillText(character.description, 128, descriptionY);
+    
+    // 清除阴影效果
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     
     // 添加文字背景区域（半透明深色区域）
     const textAreaHeight = 150;
