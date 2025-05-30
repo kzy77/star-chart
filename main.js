@@ -119,7 +119,8 @@ async function fetchDuckMoImages(options = {}) {
         
         window.lastFetchTime = now;
 
-        const response = await fetch('https://api.mossia.top/duckMo', {
+        // 使用本地代理API
+        const response = await fetch('/api/duckmo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -229,21 +230,31 @@ async function getDuckMoImageWithProxy() {
             const randomImageData = cachedImages[Math.floor(Math.random() * cachedImages.length)];
             
             if (randomImageData.pictureUrl) {
-                // 使用反代服务来避免CORS和防盗链问题
-                const originalUrlObject = randomImageData.urlsList.find(item => item.urlSize === 'original');
-                const proxyUrl = originalUrlObject ? originalUrlObject.url : null;
+                // 处理图片URL，如果是Pixiv图片，使用本地代理
+                let proxyUrl = randomImageData.pictureUrl;
                 
-                if (!proxyUrl) {
-                    console.log('未找到 original 尺寸的图片 URL');
-                    return null;
+                // 检测URL是否是Pixiv
+                if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
+                    // 从URL中提取路径部分
+                    const urlObj = new URL(proxyUrl);
+                    const pathWithQuery = urlObj.pathname + urlObj.search;
+                    // 转换为本地代理URL
+                    proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                } else if (proxyUrl.includes('imgur.com')) {
+                    // 从URL中提取路径部分
+                    const urlObj = new URL(proxyUrl);
+                    const pathWithQuery = urlObj.pathname + urlObj.search;
+                    // 转换为本地代理URL
+                    proxyUrl = `/image-proxy${pathWithQuery}`;
                 }
-                console.log(`🎨 获取到Pixiv图片: ${originalUrlObject.url}`);
+                
+                console.log(`🎨 获取到图片并使用本地代理: ${proxyUrl}`);
                 return proxyUrl;
             }
         }
         return null;
     } catch (error) {
-        console.log('❌ DuckMo API请求失败:', error.message);
+        console.log('❌ 图片请求失败:', error.message);
         return null;
     }
 }
@@ -333,7 +344,22 @@ async function loadAndApplyImages() {
                 const imageData = shuffledImages[i];
                 
                 if (imageData && imageData.pictureUrl) {
-                    character.backgroundImageUrl = imageData.pictureUrl;
+                    // 处理图片URL，使用本地代理
+                    let proxyUrl = imageData.pictureUrl;
+                    if (!proxyUrl.startsWith('/') && !proxyUrl.startsWith('data:')) {
+                        // 检测URL类型并应用相应的代理
+                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
+                            const urlObj = new URL(proxyUrl);
+                            const pathWithQuery = urlObj.pathname + urlObj.search;
+                            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                        } else if (proxyUrl.includes('imgur.com')) {
+                            const urlObj = new URL(proxyUrl);
+                            const pathWithQuery = urlObj.pathname + urlObj.search;
+                            proxyUrl = `/image-proxy${pathWithQuery}`;
+                        }
+                    }
+                    
+                    character.backgroundImageUrl = proxyUrl;
                     
                     // 预加载卡片背景图片
                     const backgroundImg = new Image();
@@ -346,7 +372,7 @@ async function loadAndApplyImages() {
                         console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
                         updateCardTexture(i);
                     };
-                    backgroundImg.src = imageData.pictureUrl;
+                    backgroundImg.src = proxyUrl;
                 }
             }
             
@@ -369,12 +395,27 @@ function applyBackgroundImage(imageUrl) {
     const bgImage = new Image();
     bgImage.crossOrigin = 'anonymous';
     
+    // 处理可能的远程URL，转换为本地代理URL
+    let proxyUrl = imageUrl;
+    if (!imageUrl.startsWith('/') && !imageUrl.startsWith('data:')) {
+        // 检测URL类型并应用相应的代理
+        if (imageUrl.includes('pixiv.re') || imageUrl.includes('pixiv.cat') || imageUrl.includes('pixiv.net')) {
+            const urlObj = new URL(imageUrl);
+            const pathWithQuery = urlObj.pathname + urlObj.search;
+            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+        } else if (imageUrl.includes('imgur.com')) {
+            const urlObj = new URL(imageUrl);
+            const pathWithQuery = urlObj.pathname + urlObj.search;
+            proxyUrl = `/image-proxy${pathWithQuery}`;
+        }
+    }
+    
     bgImage.onload = function() {
         // 淡入效果
         document.body.style.transition = 'background-image 0.8s ease-in-out';
         
         // 应用背景图片
-        document.body.style.backgroundImage = `url(${imageUrl})`;
+        document.body.style.backgroundImage = `url(${proxyUrl})`;
         document.body.style.backgroundSize = 'cover';
         document.body.style.backgroundPosition = 'center';
         document.body.style.backgroundRepeat = 'no-repeat';
@@ -388,7 +429,7 @@ function applyBackgroundImage(imageUrl) {
         console.log('❌ 背景图片加载失败，保持默认背景');
     };
     
-    bgImage.src = imageUrl;
+    bgImage.src = proxyUrl;
 }
 
 // 创建卡片（不加载背景图片）
@@ -592,55 +633,75 @@ async function refreshAllCardBackgrounds() {
     console.log('🎨 开始刷新所有卡片背景...');
     showNotification('🎨 正在为所有角色重新加载背景图片...', 'info');
     
-    let loadedCount = 0;
-    const totalCards = genshinCharacters.length;
+    // 计算需要获取的图片数量等于卡片数量
+    const requiredImages = genshinCharacters.length;
     
-    for (let i = 0; i < genshinCharacters.length; i++) {
-        const character = genshinCharacters[i];
-        // 为每个角色分配新的随机背景图片
-        const newBackgroundImageUrl = await getRandomImageUrl();
-        character.backgroundImageUrl = newBackgroundImageUrl;
+    try {
+        // 一次性获取所有需要的图片
+        const images = await imageCache.getImages(requiredImages);
         
-        // 预加载新的背景图片
-        const backgroundImg = new Image();
-        // 设置crossOrigin以避免canvas污染
-        backgroundImg.crossOrigin = 'anonymous';
-        backgroundImg.onload = function() {
-            character.backgroundImage = backgroundImg;
-            updateCardTexture(i);
-            loadedCount++;
+        if (images && images.length > 0) {
+            let loadedCount = 0;
+            const totalCards = genshinCharacters.length;
             
-            // 所有卡片加载完成
-            if (loadedCount === totalCards) {
-                showNotification('✨ 所有角色背景已更新完成！', 'success');
-            }
-        };
-        backgroundImg.onerror = function() {
-            console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
-            // 尝试重新获取不同的图片
-            let retryCount = 0;
-            function retryCardBackground() {
-                retryCount++;
-                if (retryCount <= 2) {
-                    console.log(`🔄 为${character.name}重试背景图片加载...`);
-                    getRandomImageUrl().then(newBgUrl => {
-                        character.backgroundImageUrl = newBgUrl;
-                        backgroundImg.src = newBgUrl;
-                    });
-                } else {
-                    console.log(`❌ ${character.name}的背景图片多次加载失败，使用默认背景`);
-                    character.backgroundImage = null;
-                    updateCardTexture(i);
-                    loadedCount++;
-                    
-                    if (loadedCount === totalCards) {
-                        showNotification('⚠️ 部分背景加载失败，已使用默认背景', 'warning');
+            // 随机分配图片给卡片
+            const shuffledImages = [...images].sort(() => 0.5 - Math.random());
+            
+            for (let i = 0; i < genshinCharacters.length && i < shuffledImages.length; i++) {
+                const character = genshinCharacters[i];
+                const imageData = shuffledImages[i];
+                
+                if (imageData && imageData.pictureUrl) {
+                    // 处理图片URL，使用本地代理
+                    let proxyUrl = imageData.pictureUrl;
+                    if (!proxyUrl.startsWith('/') && !proxyUrl.startsWith('data:')) {
+                        // 检测URL类型并应用相应的代理
+                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
+                            const urlObj = new URL(proxyUrl);
+                            const pathWithQuery = urlObj.pathname + urlObj.search;
+                            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                        } else if (proxyUrl.includes('imgur.com')) {
+                            const urlObj = new URL(proxyUrl);
+                            const pathWithQuery = urlObj.pathname + urlObj.search;
+                            proxyUrl = `/image-proxy${pathWithQuery}`;
+                        }
                     }
+                    
+                    character.backgroundImageUrl = proxyUrl;
+                    
+                    // 预加载卡片背景图片
+                    const backgroundImg = new Image();
+                    backgroundImg.crossOrigin = 'anonymous';
+                    backgroundImg.onload = function() {
+                        character.backgroundImage = backgroundImg;
+                        updateCardTexture(i);
+                        loadedCount++;
+                        
+                        // 所有卡片加载完成
+                        if (loadedCount === Math.min(totalCards, shuffledImages.length)) {
+                            showNotification('✨ 所有角色背景已更新完成！', 'success');
+                        }
+                    };
+                    backgroundImg.onerror = function() {
+                        console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
+                        character.backgroundImage = null;
+                        updateCardTexture(i);
+                        loadedCount++;
+                        
+                        if (loadedCount === Math.min(totalCards, shuffledImages.length)) {
+                            showNotification('⚠️ 部分背景加载失败，已使用默认背景', 'warning');
+                        }
+                    };
+                    backgroundImg.src = proxyUrl;
                 }
             }
-            setTimeout(retryCardBackground, 500);
-        };
-        backgroundImg.src = newBackgroundImageUrl;
+        } else {
+            console.log('❌ 未能获取到图片，使用默认背景');
+            showNotification('⚠️ 使用默认背景', 'warning');
+        }
+    } catch (error) {
+        console.log('❌ 图片加载失败:', error.message);
+        showNotification('⚠️ 图片加载失败，使用默认背景', 'warning');
     }
 }
 
@@ -676,7 +737,7 @@ const genshinCharacters = [
         vision: '冰',
         weapon: '弓',
         region: '璃月',
-        imageUrl: 'https://i.imgur.com/placeholder1.jpg'
+        imageUrl: 'https://i.pixiv.re/img-original/img/2023/10/24/00/01/01/112799095_p0.jpg'
     },
     { 
         name: '胡桃', 
@@ -999,15 +1060,6 @@ function createCardTexture(character, backgroundImageUrl = null) {
     // 如果有背景图片，先绘制背景图片
     if (backgroundImageUrl && character.backgroundImage) {
         try {
-            // 检查图片是否会导致canvas污染
-            const testCanvas = document.createElement('canvas');
-            testCanvas.width = 1;
-            testCanvas.height = 1;
-            const testCtx = testCanvas.getContext('2d');
-            testCtx.drawImage(character.backgroundImage, 0, 0, 1, 1);
-            // 尝试获取图像数据，如果失败说明canvas被污染了
-            testCtx.getImageData(0, 0, 1, 1);
-            
             // 绘制背景图片
             ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
             
@@ -1226,7 +1278,11 @@ function createCardTexture(character, backgroundImageUrl = null) {
     ctx.fillRect(229, 299, 15, 3);
     ctx.fillRect(241, 287, 3, 15);
     
-    return new THREE.CanvasTexture(canvas);
+    // 创建纹理，并确保设置crossOrigin
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    
+    return texture;
 }
 
 // 创建粒子系统
