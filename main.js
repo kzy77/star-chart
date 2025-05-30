@@ -1218,27 +1218,28 @@ function createCardTexture(character, backgroundImageUrl = null, isHovered = fal
     } 
     // 悬停状态：最大清晰度
     else {
-        // 步骤1：绘制纯黑背景作为基础层
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, 256, 320);
-        
-        // 步骤2：绘制背景图片，保持100%清晰度
+        // 步骤1：如果有背景图片则使用，否则创建丰富的渐变背景
         if (backgroundImageUrl && character.backgroundImage) {
             try {
                 // 完全不透明地绘制图片
                 ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
+                
+                // 添加轻微渐变覆盖确保文字可读性
+                const gradient = ctx.createLinearGradient(0, 150, 0, 320);
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 150, 256, 170);
             } catch (e) {
                 console.log(`${character.name}的背景图片加载失败:`, e.message);
+                // 图片加载失败时使用丰富的渐变背景
+                createRichGradientBackground(ctx, character);
             }
+        } else {
+            // 没有图片时创建丰富的渐变背景，而不是纯黑色
+            createRichGradientBackground(ctx, character);
         }
-        
-        // 步骤3：只在底部添加一个轻微渐变，确保文字可读性
-        const gradient = ctx.createLinearGradient(0, 150, 0, 320);
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 150, 256, 170);
     }
     
     // 共享部分：绘制卡片边框和内容
@@ -1635,7 +1636,8 @@ function animate() {
         if (meta.hovered) {
             // 悬停时，始终让卡片正面朝向相机，确保正立
             card.lookAt(camera.position);
-            card.rotation.z = Math.sin(time * 6) * 0.15;
+            // 将晃动频率从6降低到2，将幅度从0.15降低到0.05，使晃动更加轻微
+            card.rotation.z = Math.sin(time * 1.5) * 0.03;
         } else if (angleNormalized >= Math.PI * 0.3 && angleNormalized <= Math.PI * 0.7) {
             // 在顶部附近时，让卡片正面朝向观察者（相机）
             card.lookAt(camera.position);
@@ -1653,8 +1655,8 @@ function animate() {
         
         // 悬停效果
         if (meta.hovered) {
-            // 悬停时的额外闪烁效果
-            card.material.opacity = Math.min(1, depthOpacity + 0.2 + Math.sin(time * 10) * 0.1);
+            // 悬停时的额外光效，减少闪烁频率，使效果更加平稳
+            card.material.opacity = Math.min(1, depthOpacity + 0.2 + Math.sin(time * 3) * 0.05);
         } else {
             card.material.opacity = depthOpacity;
             card.rotation.z *= 0.95;
@@ -1771,5 +1773,113 @@ function showRandomBgPanelIfDevtools() {
 window.addEventListener('resize', showRandomBgPanelIfDevtools);
 window.addEventListener('focus', showRandomBgPanelIfDevtools);
 setTimeout(showRandomBgPanelIfDevtools, 800);
+
+// 为没有图片的卡片创建丰富的渐变背景
+function createRichGradientBackground(ctx, character) {
+    // 根据角色稀有度和元素类型创建不同的渐变背景
+    let primaryColor, secondaryColor;
+    
+    // 确定元素对应的主色调
+    switch(character.vision) {
+        case '冰': 
+            primaryColor = '#50AAFF'; 
+            secondaryColor = '#8AC5FF'; 
+            break;
+        case '火': 
+            primaryColor = '#FF5050'; 
+            secondaryColor = '#FF8070'; 
+            break;
+        case '雷': 
+            primaryColor = '#B45AFF'; 
+            secondaryColor = '#D78AFF'; 
+            break;
+        case '岩': 
+            primaryColor = '#FFB43C'; 
+            secondaryColor = '#FFCC70'; 
+            break;
+        case '风': 
+            primaryColor = '#50E696'; 
+            secondaryColor = '#80F0B0'; 
+            break;
+        case '水': 
+            primaryColor = '#3296FF'; 
+            secondaryColor = '#70B8FF'; 
+            break;
+        default: 
+            // 默认使用稀有度决定颜色
+            if (character.rarity === 5) {
+                primaryColor = '#9370DB'; 
+                secondaryColor = '#B19CD9';
+            } else {
+                primaryColor = '#6A5ACD'; 
+                secondaryColor = '#9387E0';
+            }
+    }
+    
+    // 创建高质量渐变背景
+    const gradient = ctx.createRadialGradient(128, 120, 30, 128, 140, 300);
+    gradient.addColorStop(0, `rgba(${hexToRgb(primaryColor)}, 0.8)`);
+    gradient.addColorStop(0.4, `rgba(${hexToRgb(secondaryColor)}, 0.6)`);
+    gradient.addColorStop(0.8, `rgba(30, 30, 50, 0.8)`);
+    gradient.addColorStop(1, 'rgba(20, 20, 30, 0.9)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 320);
+    
+    // 添加轻微的纹理效果
+    addBackgroundTexture(ctx);
+    
+    // 添加底部文字区域渐变
+    const textAreaGradient = ctx.createLinearGradient(0, 150, 0, 320);
+    textAreaGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    textAreaGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
+    textAreaGradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+    ctx.fillStyle = textAreaGradient;
+    ctx.fillRect(0, 150, 256, 170);
+}
+
+// 将16进制颜色转换为RGB格式
+function hexToRgb(hex) {
+    // 去掉#号
+    hex = hex.replace('#', '');
+    
+    // 解析RGB值
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return `${r}, ${g}, ${b}`;
+}
+
+// 添加背景纹理效果
+function addBackgroundTexture(ctx) {
+    // 添加微妙的点状纹理
+    ctx.save();
+    ctx.globalAlpha = 0.1;
+    
+    // 创建随机点状纹理
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 320;
+        const size = Math.random() * 2 + 0.5;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fill();
+    }
+    
+    // 添加轻微的水平线条
+    for (let i = 0; i < 10; i++) {
+        const y = Math.random() * 320;
+        const width = 50 + Math.random() * 150;
+        const x = Math.random() * (256 - width);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(x, y, width, 0.5);
+    }
+    
+    ctx.restore();
+}
 
 init();
