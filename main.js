@@ -1175,241 +1175,255 @@ function createDefaultAvatar(character) {
     return canvas;
 }
 
-// 创建卡片纹理
-function createCardTexture(character, backgroundImageUrl = null) {
+// 修改createCardTexture函数，添加isHovered参数
+function createCardTexture(character, backgroundImageUrl = null, isHovered = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 320;
     const ctx = canvas.getContext('2d');
     
-    // 第1层：始终先绘制默认渐变背景作为基础层，但更淡
-    // 简化背景，减少渐变强度
-    const bgGradient = ctx.createLinearGradient(0, 0, 256, 320);
-    if (character.rarity === 5) {
-        bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.3)'); // 极淡的背景
-        bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.2)'); // 几乎透明
-    } else {
-        bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.25)'); // 极淡的背景
-        bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.15)'); // 几乎透明
-    }
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, 256, 320);
-    
-    // 第2层：如果有背景图片，绘制在默认背景之上，完全不透明
-    if (backgroundImageUrl && character.backgroundImage) {
-        try {
-            // 完全不透明地绘制图片
-            ctx.globalAlpha = 0.98; // 几乎完全不透明
-            ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
-            ctx.globalAlpha = 1.0; // 恢复完全不透明
-            
-            // 添加极其微弱的渐变边缘，确保文字在浅色背景上也可读
-            const overlay = ctx.createRadialGradient(128, 160, 100, 128, 160, 200);
-            overlay.addColorStop(0, 'rgba(0, 0, 0, 0)'); // 中心完全透明
-            overlay.addColorStop(0.8, 'rgba(0, 0, 0, 0.1)'); // 边缘几乎透明
-            overlay.addColorStop(1, 'rgba(0, 0, 0, 0.2)'); // 边缘稍微暗一点
-            ctx.fillStyle = overlay;
-            ctx.fillRect(0, 0, 256, 320);
-        } catch (e) {
-            console.log(`${character.name}的背景图片可能导致安全问题:`, e.message);
-            // 发生错误时不做额外处理，因为默认背景已经绘制
-        }
-    }
-    
-    // 第3层：微小细节，几乎不可见
-    ctx.globalAlpha = 0.05; // 极低的不透明度
-    // 在边缘添加极细微的装饰点
-    for (let i = 0; i < 5; i++) { // 非常少的点
-        const x = Math.random() * 256;
-        const y = 10 + Math.random() * 300;
-        const size = Math.random() * 0.8 + 0.3; // 极小的点
-        ctx.fillStyle = `rgba(255, 255, 255, 0.15)`; // 极低的不透明度
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.globalAlpha = 1.0; // 恢复不透明度
-    
-    // 第4层：极简边框，几乎不可见
-    ctx.strokeStyle = character.rarity === 5 ? 'rgba(255, 215, 0, 0.15)' : 'rgba(147, 112, 219, 0.15)';
-    ctx.lineWidth = 2; // 很细的线宽
-    ctx.globalAlpha = 0.3; // 全局降低不透明度
-    ctx.strokeRect(6, 6, 244, 308);
-    ctx.globalAlpha = 1.0; // 恢复不透明度
-    
-    // 第5层：绘制头像（简化版）
-    // 不再绘制中心圆形头像和元素符号
-    // 所有元素信息已移至左上角六边形
-    
-    // 第6层：文字内容（更深色调，增强阴影效果）
-    // 角色名称（深金色，增强可读性）
-    ctx.font = 'bold 26px Orbitron, Arial'; // 增大字号
-    const goldNameColor = 'rgba(255, 215, 0, 0.98)'; // 金色
-    ctx.fillStyle = goldNameColor;
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)'; // 更深的阴影
-    ctx.shadowBlur = 18; // 增大阴影模糊半径
-    ctx.shadowOffsetX = 2; // 添加水平偏移
-    ctx.shadowOffsetY = 2; // 添加垂直偏移
-    ctx.fillText(character.name, 128, 140);
-    
-    // 左上角元素属性框
-    ctx.textAlign = 'center';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 1;
-    ctx.shadowOffsetY = 1;
-    
-    // 根据元素类型设置不同的颜色
-    let elementColor;
-    switch(character.vision) {
-        case '冰': elementColor = 'rgba(80, 170, 255, 0.9)'; break;
-        case '火': elementColor = 'rgba(255, 100, 80, 0.9)'; break;
-        case '雷': elementColor = 'rgba(180, 90, 255, 0.9)'; break;
-        case '岩': elementColor = 'rgba(255, 180, 60, 0.9)'; break;
-        case '风': elementColor = 'rgba(80, 230, 150, 0.9)'; break;
-        case '水': elementColor = 'rgba(50, 150, 255, 0.9)'; break;
-        default: elementColor = 'rgba(200, 200, 200, 0.9)';
-    }
-    
-    // 绘制元素背景框
-    const elementBoxSize = 40;
-    const elementPadding = 10;
-    const elementBoxX = elementPadding;
-    const elementBoxY = elementPadding;
-    
-    // 绘制带边框的六边形
-    ctx.beginPath();
-    const hexRadius = elementBoxSize / 2;
-    const hexCenterX = elementBoxX + hexRadius;
-    const hexCenterY = elementBoxY + hexRadius;
-    
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI / 3) - Math.PI / 6;
-        const x = hexCenterX + hexRadius * Math.cos(angle);
-        const y = hexCenterY + hexRadius * Math.sin(angle);
-        if (i === 0) {
-            ctx.moveTo(x, y);
+    // 非悬停状态：浅色渐变
+    if (!isHovered) {
+        // 简化背景，使用浅色渐变
+        const bgGradient = ctx.createLinearGradient(0, 0, 256, 320);
+        if (character.rarity === 5) {
+            bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.3)'); // 浅色背景
+            bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.2)'); // 浅色背景
         } else {
-            ctx.lineTo(x, y);
+            bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.25)'); // 浅色背景
+            bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.15)'); // 浅色背景
         }
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, 256, 320);
+        
+        // 如果有背景图片，绘制在浅色背景之上，但添加半透明效果
+        if (backgroundImageUrl && character.backgroundImage) {
+            try {
+                // 半透明绘制图片
+                ctx.globalAlpha = 0.8; // 80%不透明度
+                ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
+                ctx.globalAlpha = 1.0; // 恢复不透明度
+                
+                // 添加轻微的渐变覆盖，确保文字可读
+                const overlay = ctx.createLinearGradient(0, 100, 0, 320);
+                overlay.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                overlay.addColorStop(0.7, 'rgba(0, 0, 0, 0.4)');
+                overlay.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+                ctx.fillStyle = overlay;
+                ctx.fillRect(0, 100, 256, 220);
+            } catch (e) {
+                console.log(`${character.name}的背景图片加载失败:`, e.message);
+            }
+        }
+    } 
+    // 悬停状态：最大清晰度
+    else {
+        // 步骤1：绘制纯黑背景作为基础层
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, 256, 320);
+        
+        // 步骤2：绘制背景图片，保持100%清晰度
+        if (backgroundImageUrl && character.backgroundImage) {
+            try {
+                // 完全不透明地绘制图片
+                ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
+            } catch (e) {
+                console.log(`${character.name}的背景图片加载失败:`, e.message);
+            }
+        }
+        
+        // 步骤3：只在底部添加一个轻微渐变，确保文字可读性
+        const gradient = ctx.createLinearGradient(0, 150, 0, 320);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 150, 256, 170);
     }
-    ctx.closePath();
     
-    // 填充六边形
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fill();
-    
-    // 绘制六边形边框
-    ctx.strokeStyle = elementColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // 绘制元素文字
-    ctx.font = 'bold 22px Orbitron, Arial';
-    ctx.fillStyle = elementColor;
-    ctx.fillText(character.vision, hexCenterX, hexCenterY + 7);
-    
-    // 只显示武器类型信息（已移除元素属性）
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 18px Orbitron, Arial'; // 增大字号并加粗
-    ctx.fillStyle = 'rgba(150, 200, 255, 0.98)'; // 蓝色
-    ctx.shadowBlur = 15; // 增强阴影
-    ctx.shadowOffsetX = 1.5;
-    ctx.shadowOffsetY = 1.5;
-    ctx.fillText(`${character.weapon}`, 128, 165);
-    
-    // 地区（深紫色）
-    ctx.font = 'bold 16px Orbitron, Arial'; // 加粗并增大字号
-    const regionColor = 'rgba(190, 160, 255, 0.95)'; // 更深的紫色
-    ctx.fillStyle = regionColor;
-    ctx.shadowBlur = 12; // 增强阴影
-    ctx.fillText(character.region, 128, 185);
-    
-    // 星级（强化）
-    const starY = 220;
-    ctx.globalAlpha = 0.5; // 提高不透明度
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; // 加强星星阴影
-    ctx.shadowBlur = 4; // 增加阴影模糊半径
-    for (let i = 0; i < character.rarity; i++) {
-        const starX = 128 - (character.rarity - 1) * 12 + i * 24;
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.8)'; // 更不透明的金色星星
-        ctx.font = '16px Arial';
-        ctx.fillText('★', starX, starY);
-    }
-    ctx.globalAlpha = 1.0; // 恢复不透明度
-    
-    // 描述（网站名称）- 使其更加醒目
-    // 先绘制醒目的背景区域
-    const descriptionY = 255;
-    const descriptionHeight = 30;
-    const descBackgroundY = descriptionY - 20;
-    
-    // 绘制一个特殊的醒目背景
-    ctx.fillStyle = character.rarity === 5 ? 
-        'rgba(255, 215, 0, 0.25)' : // 5星角色使用金色背景
-        'rgba(147, 112, 219, 0.25)'; // 4星角色使用紫色背景
-    
-    // 圆角矩形背景
-    const bgWidth = 220;
-    const bgX = (256 - bgWidth) / 2;
-    ctx.beginPath();
-    ctx.roundRect(bgX, descBackgroundY, bgWidth, descriptionHeight, 8);
-    ctx.fill();
-    
-    // 添加边框效果
+    // 共享部分：绘制卡片边框和内容
+    // 卡片边框
     ctx.strokeStyle = character.rarity === 5 ? 
-        'rgba(255, 215, 0, 0.5)' : // 5星角色使用金色边框
-        'rgba(147, 112, 219, 0.5)'; // 4星角色使用紫色边框
-    ctx.lineWidth = 2;
-    ctx.stroke();
+        (isHovered ? '#FFD700' : 'rgba(255, 215, 0, 0.4)') : 
+        (isHovered ? '#9370DB' : 'rgba(147, 112, 219, 0.4)');
+    ctx.lineWidth = isHovered ? 3 : 2;
+    ctx.strokeRect(3, 3, 250, 314);
     
-    // 文字阴影和样式
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetX = 1.5;
-    ctx.shadowOffsetY = 1.5;
-    ctx.font = 'bold 16px Orbitron, Arial'; // 增大字体并加粗
-    ctx.fillStyle = character.rarity === 5 ? 
-        'rgba(255, 220, 120, 0.98)' : // 5星角色使用更亮的金色
-        'rgba(230, 210, 255, 0.98)'; // 4星角色使用更亮的紫色
-    ctx.fillText(character.description, 128, descriptionY);
+    // 左上角元素框
+    drawElementBox(ctx, character, isHovered);
     
-    // 添加发光效果
-    ctx.shadowColor = character.rarity === 5 ? 
-        'rgba(255, 215, 0, 0.8)' : // 5星角色使用金色发光
-        'rgba(147, 112, 219, 0.8)'; // 4星角色使用紫色发光
-    ctx.shadowBlur = 15;
-    ctx.fillText(character.description, 128, descriptionY);
+    // 角色名称
+    drawTextWithOutline(
+        ctx, 
+        character.name, 
+        128, 
+        140, 
+        isHovered ? 28 : 26, 
+        isHovered ? '#FFFFFF' : 'rgba(255, 215, 0, 0.98)', 
+        '#000000', 
+        isHovered ? 4 : 3
+    );
     
-    // 清除阴影效果
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    // 武器类型
+    drawTextWithOutline(
+        ctx, 
+        character.weapon, 
+        128, 
+        170, 
+        isHovered ? 18 : 16, 
+        isHovered ? '#B0E0FF' : 'rgba(150, 200, 255, 0.98)', 
+        '#000000', 
+        isHovered ? 3 : 2
+    );
     
-    // 添加文字背景区域（半透明深色区域）
-    const textAreaHeight = 150;
-    const textAreaY = 320 - textAreaHeight;
-    const gradient = ctx.createLinearGradient(0, textAreaY, 0, 320);
-    gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // 顶部完全透明
-    gradient.addColorStop(0.2, 'rgba(0, 0, 0, 0.4)'); // 渐变到半透明
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)'); // 底部更不透明
+    // 地区
+    drawTextWithOutline(
+        ctx, 
+        character.region, 
+        128, 
+        195, 
+        isHovered ? 18 : 16, 
+        isHovered ? '#DCC0FF' : 'rgba(190, 160, 255, 0.95)', 
+        '#000000', 
+        isHovered ? 3 : 2
+    );
     
-    // 绘制文字背景区域
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, textAreaY, 256, textAreaHeight);
+    // 星级
+    drawStarRating(ctx, character.rarity, 215, isHovered);
     
-    // 清除阴影效果
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    // 网站名称（描述）
+    drawDescriptionBox(ctx, character, isHovered);
     
-    // 纯净简约风格，去除所有多余的装饰元素
-    
-    // 创建纹理，并确保设置crossOrigin
+    // 创建纹理
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     
     return texture;
+}
+
+// 更新绘制函数，支持悬停状态
+function drawElementBox(ctx, character, isHovered) {
+    // 设置元素颜色
+    let elementColor;
+    switch(character.vision) {
+        case '冰': elementColor = isHovered ? '#50AAFF' : 'rgba(80, 170, 255, 0.9)'; break;
+        case '火': elementColor = isHovered ? '#FF5050' : 'rgba(255, 100, 80, 0.9)'; break;
+        case '雷': elementColor = isHovered ? '#B45AFF' : 'rgba(180, 90, 255, 0.9)'; break;
+        case '岩': elementColor = isHovered ? '#FFB43C' : 'rgba(255, 180, 60, 0.9)'; break;
+        case '风': elementColor = isHovered ? '#50E696' : 'rgba(80, 230, 150, 0.9)'; break;
+        case '水': elementColor = isHovered ? '#3296FF' : 'rgba(50, 150, 255, 0.9)'; break;
+        default: elementColor = isHovered ? '#C8C8C8' : 'rgba(200, 200, 200, 0.9)';
+    }
+    
+    // 绘制六边形背景
+    const size = 40;
+    const x = 10;
+    const y = 10;
+    const centerX = x + size/2;
+    const centerY = y + size/2;
+    const radius = size/2;
+    
+    // 黑色背景
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI / 3) - Math.PI / 6;
+        const pointX = centerX + radius * Math.cos(angle);
+        const pointY = centerY + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(pointX, pointY);
+        else ctx.lineTo(pointX, pointY);
+    }
+    ctx.closePath();
+    ctx.fillStyle = isHovered ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.6)';
+    ctx.fill();
+    
+    // 彩色边框
+    ctx.strokeStyle = elementColor;
+    ctx.lineWidth = isHovered ? 3 : 2;
+    ctx.stroke();
+    
+    // 元素文字
+    drawTextWithOutline(
+        ctx, 
+        character.vision, 
+        centerX, 
+        centerY + 8, 
+        22, 
+        elementColor, 
+        '#000000', 
+        isHovered ? 2 : 1.5
+    );
+}
+
+function drawStarRating(ctx, rarity, y, isHovered) {
+    const starColor = rarity === 5 ? 
+        (isHovered ? '#FFD700' : 'rgba(255, 215, 0, 0.8)') : 
+        (isHovered ? '#DDA0DD' : 'rgba(221, 160, 221, 0.8)');
+    const centerX = 128;
+    const starSpacing = 20;
+    
+    for (let i = 0; i < rarity; i++) {
+        const starX = centerX - ((rarity - 1) * starSpacing / 2) + (i * starSpacing);
+        drawTextWithOutline(
+            ctx, 
+            '★', 
+            starX, 
+            y, 
+            isHovered ? 18 : 16, 
+            starColor, 
+            '#000000', 
+            isHovered ? 2 : 1.5
+        );
+    }
+}
+
+function drawDescriptionBox(ctx, character, isHovered) {
+    // 绘制背景框
+    const boxWidth = 200;
+    const boxHeight = 34;
+    const boxX = (256 - boxWidth) / 2;
+    const boxY = 250;
+    
+    // 黑色背景
+    ctx.fillStyle = isHovered ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.6)';
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+    ctx.fill();
+    
+    // 彩色边框
+    ctx.strokeStyle = character.rarity === 5 ? 
+        (isHovered ? '#FFD700' : 'rgba(255, 215, 0, 0.5)') : 
+        (isHovered ? '#B768FF' : 'rgba(183, 104, 255, 0.5)');
+    ctx.lineWidth = isHovered ? 2 : 1.5;
+    ctx.stroke();
+    
+    // 描述文字
+    drawTextWithOutline(
+        ctx, 
+        character.description, 
+        128, 
+        boxY + 22, 
+        isHovered ? 16 : 15,
+        isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.9)', 
+        '#000000', 
+        isHovered ? 3 : 2
+    );
+}
+
+// 新增：绘制带描边的文字
+function drawTextWithOutline(ctx, text, x, y, fontSize, fillColor, outlineColor, outlineWidth) {
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${fontSize}px Orbitron, Arial`;
+    
+    // 绘制描边
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = outlineWidth;
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    ctx.strokeText(text, x, y);
+    
+    // 绘制填充
+    ctx.fillStyle = fillColor;
+    ctx.fillText(text, x, y);
 }
 
 // 创建粒子系统
@@ -1473,8 +1487,10 @@ function createParticleSystem() {
 function updateCardTexture(cardIndex) {
     if (cardIndex >= 0 && cardIndex < cards.length) {
         const character = genshinCharacters[cardIndex];
+        const meta = cardMetas[cardIndex];
         const card = cards[cardIndex];
-        const newTexture = createCardTexture(character, character.backgroundImageUrl);
+        const isHovered = meta.isHoveredNow || false;
+        const newTexture = createCardTexture(character, character.backgroundImageUrl, isHovered);
         card.material.map = newTexture;
         card.material.needsUpdate = true;
         console.log(`✨ 角色 ${character.name} 的背景已更新`);
@@ -1536,9 +1552,27 @@ function animate() {
         if (hoveredCardIndex === i) {
             meta.targetScale = 2;
             meta.hovered = true;
+            
+            // 更新卡片纹理，使用悬停版本
+            if (!meta.isHoveredNow) {
+                meta.isHoveredNow = true;
+                const character = genshinCharacters[i];
+                const newTexture = createCardTexture(character, character.backgroundImageUrl, true);
+                card.material.map = newTexture;
+                card.material.needsUpdate = true;
+            }
         } else {
             meta.targetScale = 1;
             meta.hovered = false;
+            
+            // 更新卡片纹理，使用非悬停版本
+            if (meta.isHoveredNow) {
+                meta.isHoveredNow = false;
+                const character = genshinCharacters[i];
+                const newTexture = createCardTexture(character, character.backgroundImageUrl, false);
+                card.material.map = newTexture;
+                card.material.needsUpdate = true;
+            }
         }
         
         // 屏幕内逆时针旋转：当有卡片被悬停时停止旋转，靠近观察者时卡片最大
