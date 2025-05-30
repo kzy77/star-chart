@@ -714,13 +714,13 @@ window.refreshAllCardBackgrounds = refreshAllCardBackgrounds;
 function createDefaultCardBackground(ctx, character) {
     const bgGradient = ctx.createRadialGradient(128, 160, 50, 128, 160, 200);
     if (character.rarity === 5) {
-        bgGradient.addColorStop(0, character.color + 'FF');
-        bgGradient.addColorStop(0.3, '#FFD700DD');
-        bgGradient.addColorStop(0.6, '#8A2BE2BB');
+        bgGradient.addColorStop(0, character.color + '99'); // 降低不透明度
+        bgGradient.addColorStop(0.3, '#FFD70088'); // 降低不透明度
+        bgGradient.addColorStop(0.6, '#8A2BE288'); // 降低不透明度
         bgGradient.addColorStop(1, '#0a0a1a');
     } else {
-        bgGradient.addColorStop(0, character.color + 'FF');
-        bgGradient.addColorStop(0.4, '#9370DBDD');
+        bgGradient.addColorStop(0, character.color + '99'); // 降低不透明度
+        bgGradient.addColorStop(0.4, '#9370DB88'); // 降低不透明度
         bgGradient.addColorStop(1, '#0a0a1a');
     }
     ctx.fillStyle = bgGradient;
@@ -967,10 +967,10 @@ function createDefaultAvatar(character) {
     canvas.height = 120;
     const ctx = canvas.getContext('2d');
     
-    // 星空背景
+    // 星空背景（极度淡化）
     const bgGradient = ctx.createRadialGradient(60, 60, 20, 60, 60, 60);
-    bgGradient.addColorStop(0, character.color + 'FF');
-    bgGradient.addColorStop(0.6, character.color + 'AA');
+    bgGradient.addColorStop(0, character.color + '55'); // 大幅降低不透明度
+    bgGradient.addColorStop(0.6, character.color + '33'); // 大幅降低不透明度
     bgGradient.addColorStop(1, '#0a0a1a');
     
     ctx.fillStyle = bgGradient;
@@ -978,41 +978,44 @@ function createDefaultAvatar(character) {
     ctx.arc(60, 60, 60, 0, Math.PI * 2);
     ctx.fill();
     
-    // 添加星星点缀
-    for (let i = 0; i < 15; i++) {
+    // 添加星星点缀（极少且极淡）
+    for (let i = 0; i < 5; i++) { // 显著减少数量
         const x = 10 + Math.random() * 100;
         const y = 10 + Math.random() * 100;
-        const size = Math.random() * 2 + 1;
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+        const size = Math.random() * 1 + 0.5; // 更小的星星
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.3 + 0.1})`; // 更低的不透明度
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
     }
     
-    // 发光外圈
+    // 发光外圈（极度淡化）
     ctx.strokeStyle = character.color;
-    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.3; // 全局降低不透明度
+    ctx.lineWidth = 2; // 更细的线宽
     ctx.shadowColor = character.color;
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 5; // 减小发光范围
     ctx.beginPath();
     ctx.arc(60, 60, 56, 0, Math.PI * 2);
     ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 内圈装饰
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    // 内圈装饰（极度淡化）
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // 显著降低不透明度
+    ctx.lineWidth = 1; // 更细的线宽
     ctx.beginPath();
     ctx.arc(60, 60, 48, 0, Math.PI * 2);
     ctx.stroke();
     
-    // 元素符号背景
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    // 元素符号背景（几乎透明）
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; // 显著降低不透明度
     ctx.beginPath();
     ctx.arc(60, 60, 35, 0, Math.PI * 2);
     ctx.fill();
     
-    // 元素符号
+    // 元素符号（非常淡）
+    ctx.globalAlpha = 0.15; // 全局降低不透明度
     let elementSymbol = '';
     switch(character.vision) {
         case '冰': elementSymbol = '❄️'; break;
@@ -1024,14 +1027,16 @@ function createDefaultAvatar(character) {
         default: elementSymbol = '✨';
     }
     
-    ctx.font = '32px Arial';
+    ctx.font = '28px Arial'; // 稍小的字体
     ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.fillText(elementSymbol, 60, 70);
+    ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 角落星级装饰
+    // 角落星级装饰（几乎不可见）
     if (character.rarity === 5) {
-        ctx.fillStyle = '#FFD700';
-        ctx.font = '12px Arial';
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)'; // 显著降低不透明度
+        ctx.font = '10px Arial'; // 更小的字体
         for (let i = 0; i < 5; i++) {
             const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
             const x = 60 + Math.cos(angle) * 45;
@@ -1039,8 +1044,8 @@ function createDefaultAvatar(character) {
             ctx.fillText('★', x, y);
         }
     } else {
-        ctx.fillStyle = '#9370DB';
-        ctx.font = '10px Arial';
+        ctx.fillStyle = 'rgba(147, 112, 219, 0.15)'; // 显著降低不透明度
+        ctx.font = '8px Arial'; // 更小的字体
         for (let i = 0; i < 4; i++) {
             const angle = (i / 4) * Math.PI * 2 - Math.PI / 2;
             const x = 60 + Math.cos(angle) * 45;
@@ -1059,226 +1064,133 @@ function createCardTexture(character, backgroundImageUrl = null) {
     canvas.height = 320;
     const ctx = canvas.getContext('2d');
     
-    // 如果有背景图片，先绘制背景图片
+    // 第1层：始终先绘制默认渐变背景作为基础层，但更淡
+    // 简化背景，减少渐变强度
+    const bgGradient = ctx.createLinearGradient(0, 0, 256, 320);
+    if (character.rarity === 5) {
+        bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.3)'); // 极淡的背景
+        bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.2)'); // 几乎透明
+    } else {
+        bgGradient.addColorStop(0, 'rgba(20, 20, 30, 0.25)'); // 极淡的背景
+        bgGradient.addColorStop(1, 'rgba(10, 10, 20, 0.15)'); // 几乎透明
+    }
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, 256, 320);
+    
+    // 第2层：如果有背景图片，绘制在默认背景之上，完全不透明
     if (backgroundImageUrl && character.backgroundImage) {
         try {
-            // 绘制背景图片
+            // 完全不透明地绘制图片
+            ctx.globalAlpha = 0.98; // 几乎完全不透明
             ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
+            ctx.globalAlpha = 1.0; // 恢复完全不透明
             
-            // 添加半透明的角色主题色覆盖层
-            const overlay = ctx.createRadialGradient(128, 160, 50, 128, 160, 200);
-            if (character.rarity === 5) {
-                overlay.addColorStop(0, character.color + '66');
-                overlay.addColorStop(0.3, '#FFD70044');
-                overlay.addColorStop(0.6, '#8A2BE244');
-                overlay.addColorStop(1, '#0a0a1a99');
-            } else {
-                overlay.addColorStop(0, character.color + '66');
-                overlay.addColorStop(0.4, '#9370DB44');
-                overlay.addColorStop(1, '#0a0a1a99');
-            }
+            // 添加极其微弱的渐变边缘，确保文字在浅色背景上也可读
+            const overlay = ctx.createRadialGradient(128, 160, 100, 128, 160, 200);
+            overlay.addColorStop(0, 'rgba(0, 0, 0, 0)'); // 中心完全透明
+            overlay.addColorStop(0.8, 'rgba(0, 0, 0, 0.1)'); // 边缘几乎透明
+            overlay.addColorStop(1, 'rgba(0, 0, 0, 0.2)'); // 边缘稍微暗一点
             ctx.fillStyle = overlay;
             ctx.fillRect(0, 0, 256, 320);
         } catch (e) {
-            console.log(`${character.name}的背景图片可能导致安全问题，使用默认渐变背景:`, e.message);
-            // 回退到原来的渐变背景
-            createDefaultCardBackground(ctx, character);
+            console.log(`${character.name}的背景图片可能导致安全问题:`, e.message);
+            // 发生错误时不做额外处理，因为默认背景已经绘制
         }
-    } else {
-        // 创建默认渐变背景
-        createDefaultCardBackground(ctx, character);
     }
     
-    // 添加更多星空背景纹理
-    for (let i = 0; i < 50; i++) {
+    // 第3层：微小细节，几乎不可见
+    ctx.globalAlpha = 0.05; // 极低的不透明度
+    // 在边缘添加极细微的装饰点
+    for (let i = 0; i < 5; i++) { // 非常少的点
         const x = Math.random() * 256;
-        const y = Math.random() * 320;
-        const size = Math.random() * 3 + 1;
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+        const y = 10 + Math.random() * 300;
+        const size = Math.random() * 0.8 + 0.3; // 极小的点
+        ctx.fillStyle = `rgba(255, 255, 255, 0.15)`; // 极低的不透明度
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
     }
+    ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 添加流星效果
-    for (let i = 0; i < 3; i++) {
-        const startX = Math.random() * 256;
-        const startY = Math.random() * 100;
-        const endX = startX + 30 + Math.random() * 50;
-        const endY = startY + 20 + Math.random() * 30;
-        
-        const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-    }
-    
-    // 添加元素主题装饰
-    ctx.globalAlpha = 0.3;
-    let decorPattern = '';
-    switch(character.vision) {
-        case '冰':
-            // 冰晶图案
-            for (let i = 0; i < 8; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#87CEEB';
-                ctx.font = '16px Arial';
-                ctx.fillText('❄', x, y);
-            }
-            break;
-        case '火':
-            // 火焰图案
-            for (let i = 0; i < 6; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#FF6347';
-                ctx.font = '14px Arial';
-                ctx.fillText('🔥', x, y);
-            }
-            break;
-        case '雷':
-            // 闪电图案
-            for (let i = 0; i < 5; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#9370DB';
-                ctx.font = '18px Arial';
-                ctx.fillText('⚡', x, y);
-            }
-            break;
-        case '岩':
-            // 岩石图案
-            for (let i = 0; i < 4; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#DAA520';
-                ctx.font = '16px Arial';
-                ctx.fillText('🗿', x, y);
-            }
-            break;
-        case '风':
-            // 风之图案
-            for (let i = 0; i < 7; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#40E0D0';
-                ctx.font = '14px Arial';
-                ctx.fillText('💨', x, y);
-            }
-            break;
-        case '水':
-            // 水滴图案
-            for (let i = 0; i < 6; i++) {
-                const x = 20 + Math.random() * 216;
-                const y = 20 + Math.random() * 280;
-                ctx.fillStyle = '#4169E1';
-                ctx.font = '14px Arial';
-                ctx.fillText('💧', x, y);
-            }
-            break;
-    }
-    ctx.globalAlpha = 1;
-    
-    // 发光边框
-    ctx.strokeStyle = character.rarity === 5 ? '#FFD700' : '#9370DB';
-    ctx.lineWidth = 6;
-    ctx.shadowColor = ctx.strokeStyle;
-    ctx.shadowBlur = 20;
+    // 第4层：极简边框，几乎不可见
+    ctx.strokeStyle = character.rarity === 5 ? 'rgba(255, 215, 0, 0.15)' : 'rgba(147, 112, 219, 0.15)';
+    ctx.lineWidth = 2; // 很细的线宽
+    ctx.globalAlpha = 0.3; // 全局降低不透明度
     ctx.strokeRect(6, 6, 244, 308);
-    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 双重边框效果
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 236, 300);
-    
-    // 绘制默认头像
-    const avatarCanvas = createDefaultAvatar(character);
-    ctx.drawImage(avatarCanvas, 88, 20, 80, 80);
-    
-    // 添加更强的发光效果到头像
-    ctx.strokeStyle = character.color;
-    ctx.lineWidth = 4;
-    ctx.shadowColor = character.color;
-    ctx.shadowBlur = 15;
+    // 第5层：绘制头像（简化版）
+    // 绘制简单的圆形头像背景
     ctx.beginPath();
-    ctx.arc(128, 60, 42, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.arc(128, 60, 40, 0, Math.PI * 2);
+    ctx.fillStyle = character.rarity === 5 ? 'rgba(20, 20, 40, 0.4)' : 'rgba(20, 20, 40, 0.3)';
+    ctx.fill();
     
-    // 角色名称
-    ctx.font = 'bold 22px Orbitron, Arial';
-    ctx.fillStyle = 'white';
+    // 添加简单的元素符号
+    ctx.globalAlpha = 0.08; // 极低的不透明度
+    let elementSymbol = '';
+    switch(character.vision) {
+        case '冰': elementSymbol = '❄️'; break;
+        case '火': elementSymbol = '🔥'; break;
+        case '雷': elementSymbol = '⚡'; break;
+        case '岩': elementSymbol = '🗿'; break;
+        case '风': elementSymbol = '💨'; break;
+        case '水': elementSymbol = '💧'; break;
+        default: elementSymbol = '✨';
+    }
+    
+    ctx.font = '24px Arial'; // 更小的字体
     ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 6;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillText(elementSymbol, 128, 70);
+    ctx.globalAlpha = 1.0; // 恢复不透明度
+    
+    // 第6层：文字内容（金色系，提高可读性）
+    // 角色名称（淡金色）
+    ctx.font = 'bold 24px Orbitron, Arial';
+    const goldNameColor = 'rgba(255, 223, 150, 0.98)'; // 淡金色
+    ctx.fillStyle = goldNameColor;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; // 强阴影确保在任何背景上可读
+    ctx.shadowBlur = 12; // 大阴影模糊半径
     ctx.fillText(character.name, 128, 140);
     
-    // 元素/武器信息
+    // 元素/武器信息（淡蓝色）
     ctx.font = '16px Orbitron, Arial';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    const infoColor = 'rgba(180, 230, 255, 0.95)'; // 淡蓝色
+    ctx.fillStyle = infoColor;
+    ctx.shadowBlur = 10; // 保持较强阴影
     ctx.fillText(`${character.vision} · ${character.weapon}`, 128, 165);
     
-    // 地区
+    // 地区（浅紫色）
     ctx.font = '14px Orbitron, Arial';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    const regionColor = 'rgba(220, 190, 255, 0.9)'; // 浅紫色
+    ctx.fillStyle = regionColor;
+    ctx.shadowBlur = 8; // 保持较强阴影
     ctx.fillText(character.region, 128, 185);
     
-    // 星级
+    // 星级（非常微弱）
     const starY = 220;
+    ctx.globalAlpha = 0.25; // 全局极低不透明度
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'; // 加强星星阴影
+    ctx.shadowBlur = 3; // 较小阴影模糊半径
     for (let i = 0; i < character.rarity; i++) {
         const starX = 128 - (character.rarity - 1) * 12 + i * 24;
-        ctx.fillStyle = '#FFD700';
-        ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 8;
-        ctx.font = '20px Arial';
+        ctx.fillStyle = 'rgba(255, 223, 150, 0.6)'; // 淡金色星星
+        ctx.font = '16px Arial'; // 更小的星星
         ctx.fillText('★', starX, starY);
     }
-    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0; // 恢复不透明度
     
-    // 描述
+    // 描述（淡金色）
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 10;
     ctx.font = '13px Orbitron, Arial';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 223, 150, 0.9)'; // 淡金色，与角色名称统一
     ctx.fillText(character.description, 128, 260);
+    ctx.shadowBlur = 0; // 清除阴影效果
     
-    // 装饰元素
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(40, 280);
-    ctx.lineTo(216, 280);
-    ctx.stroke();
-    
-    // 左上角
-    ctx.fillRect(6, 6, 30, 6);
-    ctx.fillRect(6, 6, 6, 30);
-    ctx.fillRect(12, 12, 15, 3);
-    ctx.fillRect(12, 12, 3, 15);
-    
-    // 右上角
-    ctx.fillRect(220, 6, 30, 6);
-    ctx.fillRect(244, 6, 6, 30);
-    ctx.fillRect(229, 12, 15, 3);
-    ctx.fillRect(241, 12, 3, 15);
-    
-    // 左下角
-    ctx.fillRect(6, 308, 30, 6);
-    ctx.fillRect(6, 284, 6, 30);
-    ctx.fillRect(12, 299, 15, 3);
-    ctx.fillRect(12, 287, 3, 15);
-    
-    // 右下角
-    ctx.fillRect(220, 308, 30, 6);
-    ctx.fillRect(244, 284, 6, 30);
-    ctx.fillRect(229, 299, 15, 3);
-    ctx.fillRect(241, 287, 3, 15);
+    // 纯净简约风格，去除所有多余的装饰元素
     
     // 创建纹理，并确保设置crossOrigin
     const texture = new THREE.CanvasTexture(canvas);
