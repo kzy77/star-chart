@@ -120,8 +120,8 @@ async function fetchDuckMoImages(options = {}) {
         
         window.lastFetchTime = now;
 
-        // 使用本地代理API
-        const response = await fetch('/api/duckmo', {
+        // 创建请求配置
+        const requestConfig = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -132,7 +132,11 @@ async function fetchDuckMoImages(options = {}) {
                 ...(dateAfter && { dateAfter }),
                 ...(dateBefore && { dateBefore })
             })
-        });
+        };
+
+        // 使用本地代理API，适配Cloudflare Functions
+        const response = await fetch('/api/duckmo', requestConfig);
+        
         if (!response.ok) {
             if (response.status === 429) {
                 console.log('⚠️ API 请求过于频繁，切换到备用图片...');
@@ -145,6 +149,16 @@ async function fetchDuckMoImages(options = {}) {
         }
 
         const result = await response.json();
+        
+        // 如果返回的数据中有fallback标志，说明这是来自我们的代理函数的错误响应
+        if (result.fallback) {
+            console.log('⚠️ API 代理返回错误，切换到备用图片...', result.message);
+            return { success: true, data: Array(num).fill().map(() => ({
+                urlsList: [{ url: getFallbackImageUrl(), urlSize: 'original' }],
+                xCreateDate: Date.now()
+            }))};
+        }
+
         console.log('图库API接口返回：{}', result);
 
         if (!result.success) {
@@ -155,7 +169,10 @@ async function fetchDuckMoImages(options = {}) {
         return result;
     } catch (error) {
         console.log('❌ DuckMo API 请求失败 ERROR:', error.message);
-        return null;
+        return { success: true, data: Array(num).fill().map(() => ({
+            urlsList: [{ url: getFallbackImageUrl(), urlSize: 'original' }],
+            xCreateDate: Date.now()
+        }))};
     }
 }
 
@@ -232,25 +249,50 @@ async function getDuckMoImageWithProxy() {
             const randomImageData = cachedImages[Math.floor(Math.random() * cachedImages.length)];
             
             if (randomImageData.pictureUrl) {
-                // 处理图片URL，如果是Pixiv图片，使用本地代理
+                // 处理图片URL，改为使用代理
                 let proxyUrl = randomImageData.pictureUrl;
                 
                 // 检测URL是否是Pixiv
-                if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
-                    // 从URL中提取路径部分
-                    const urlObj = new URL(proxyUrl);
-                    const pathWithQuery = urlObj.pathname + urlObj.search;
-                    // 转换为本地代理URL
-                    proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net') || proxyUrl.includes('pximg.net')) {
+                    // 提取Pixiv域名后的完整路径
+                    try {
+                        const urlObj = new URL(proxyUrl);
+                        let fullPath = '';
+                        
+                        if (proxyUrl.includes('pixiv.re')) {
+                            fullPath = urlObj.pathname.replace(/^\//, ''); // 移除开头的斜杠
+                        } else if (proxyUrl.includes('pximg.net')) {
+                            // 例如：https://i.pximg.net/img-original/img/2023/01/01/00/00/00/12345678_p0.jpg
+                            // 转为：img-original/img/2023/01/01/00/00/00/12345678_p0.jpg
+                            fullPath = urlObj.pathname.replace(/^\//, '');
+                        } else {
+                            // 其他Pixiv镜像站，尝试提取完整路径
+                            fullPath = urlObj.pathname.replace(/^\//, '');
+                        }
+                        
+                        // 使用代理处理图片，保留完整路径
+                        proxyUrl = `/api/image-proxy/pixiv/${fullPath}${urlObj.search || ''}`;
+                        console.log(`🖼️ Pixiv图片代理URL: ${proxyUrl}`);
+                    } catch (e) {
+                        console.log('URL解析错误，使用原始URL:', e.message);
+                    }
                 } else if (proxyUrl.includes('imgur.com')) {
-                    // 从URL中提取路径部分
-                    const urlObj = new URL(proxyUrl);
-                    const pathWithQuery = urlObj.pathname + urlObj.search;
-                    // 转换为本地代理URL
-                    proxyUrl = `/image-proxy${pathWithQuery}`;
+                    // 提取imgur图片ID
+                    try {
+                        const urlObj = new URL(proxyUrl);
+                        // 获取最后一部分作为图片ID
+                        const pathParts = urlObj.pathname.split('/');
+                        const imagePart = pathParts[pathParts.length - 1]; // 例如 "abcdef.jpg"
+                        
+                        // 使用代理处理图片
+                        proxyUrl = `/api/image-proxy/${imagePart}${urlObj.search || ''}`;
+                        console.log(`🖼️ Imgur图片代理URL: ${proxyUrl}`);
+                    } catch (e) {
+                        console.log('URL解析错误，使用原始URL:', e.message);
+                    }
                 }
                 
-                console.log(`🎨 获取到图片并使用本地代理: ${proxyUrl}`);
+                console.log(`🎨 获取到图片并使用代理: ${proxyUrl}`);
                 return proxyUrl;
             }
         }
@@ -346,18 +388,42 @@ async function loadAndApplyImages() {
                 const imageData = shuffledImages[i];
                 
                 if (imageData && imageData.pictureUrl) {
-                    // 处理图片URL，使用本地代理
+                    // 处理图片URL，使用代理
                     let proxyUrl = imageData.pictureUrl;
                     if (!proxyUrl.startsWith('/') && !proxyUrl.startsWith('data:')) {
                         // 检测URL类型并应用相应的代理
-                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
-                            const urlObj = new URL(proxyUrl);
-                            const pathWithQuery = urlObj.pathname + urlObj.search;
-                            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net') || proxyUrl.includes('pximg.net')) {
+                            try {
+                                const urlObj = new URL(proxyUrl);
+                                // 提取Pixiv域名后的完整路径
+                                let fullPath = '';
+                                
+                                if (proxyUrl.includes('pixiv.re')) {
+                                    fullPath = urlObj.pathname.replace(/^\//, ''); // 移除开头的斜杠
+                                } else if (proxyUrl.includes('pximg.net')) {
+                                    fullPath = urlObj.pathname.replace(/^\//, '');
+                                } else {
+                                    // 其他Pixiv镜像站，尝试提取完整路径
+                                    fullPath = urlObj.pathname.replace(/^\//, '');
+                                }
+                                
+                                // 使用代理处理图片，保留完整路径
+                                proxyUrl = `/api/image-proxy/pixiv/${fullPath}${urlObj.search || ''}`;
+                                console.log(`✅ 卡片${i+1} Pixiv图片代理URL: ${proxyUrl}`);
+                            } catch (e) {
+                                console.log('URL解析错误，使用原始URL:', e.message);
+                            }
                         } else if (proxyUrl.includes('imgur.com')) {
-                            const urlObj = new URL(proxyUrl);
-                            const pathWithQuery = urlObj.pathname + urlObj.search;
-                            proxyUrl = `/image-proxy${pathWithQuery}`;
+                            try {
+                                const urlObj = new URL(proxyUrl);
+                                // 获取最后一部分作为图片ID
+                                const pathParts = urlObj.pathname.split('/');
+                                const imagePart = pathParts[pathParts.length - 1];
+                                proxyUrl = `/api/image-proxy/${imagePart}${urlObj.search || ''}`;
+                                console.log(`✅ 卡片${i+1} Imgur图片代理URL: ${proxyUrl}`);
+                            } catch (e) {
+                                console.log('URL解析错误，使用原始URL:', e.message);
+                            }
                         }
                     }
                     
@@ -370,8 +436,9 @@ async function loadAndApplyImages() {
                         character.backgroundImage = backgroundImg;
                         updateCardTexture(i);
                     };
-                    backgroundImg.onerror = function() {
-                        console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
+                    backgroundImg.onerror = function(e) {
+                        console.log(`❌ 角色 ${character.name} 的背景图片加载失败:`, e.message);
+                        console.log(`尝试的URL: ${proxyUrl}`);
                         updateCardTexture(i);
                     };
                     backgroundImg.src = proxyUrl;
@@ -397,18 +464,42 @@ function applyBackgroundImage(imageUrl) {
     const bgImage = new Image();
     bgImage.crossOrigin = 'anonymous';
     
-    // 处理可能的远程URL，转换为本地代理URL
+    // 处理可能的远程URL，转换为代理URL
     let proxyUrl = imageUrl;
     if (!imageUrl.startsWith('/') && !imageUrl.startsWith('data:')) {
         // 检测URL类型并应用相应的代理
-        if (imageUrl.includes('pixiv.re') || imageUrl.includes('pixiv.cat') || imageUrl.includes('pixiv.net')) {
-            const urlObj = new URL(imageUrl);
-            const pathWithQuery = urlObj.pathname + urlObj.search;
-            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+        if (imageUrl.includes('pixiv.re') || imageUrl.includes('pixiv.cat') || imageUrl.includes('pixiv.net') || imageUrl.includes('pximg.net')) {
+            try {
+                const urlObj = new URL(imageUrl);
+                // 提取Pixiv域名后的完整路径
+                let fullPath = '';
+                
+                if (imageUrl.includes('pixiv.re')) {
+                    fullPath = urlObj.pathname.replace(/^\//, ''); // 移除开头的斜杠
+                } else if (imageUrl.includes('pximg.net')) {
+                    fullPath = urlObj.pathname.replace(/^\//, '');
+                } else {
+                    // 其他Pixiv镜像站，尝试提取完整路径
+                    fullPath = urlObj.pathname.replace(/^\//, '');
+                }
+                
+                // 使用代理处理图片，保留完整路径
+                proxyUrl = `/api/image-proxy/pixiv/${fullPath}${urlObj.search || ''}`;
+                console.log(`🖼️ 背景Pixiv图片代理URL: ${proxyUrl}`);
+            } catch (e) {
+                console.log('URL解析错误，使用原始URL:', e.message);
+            }
         } else if (imageUrl.includes('imgur.com')) {
-            const urlObj = new URL(imageUrl);
-            const pathWithQuery = urlObj.pathname + urlObj.search;
-            proxyUrl = `/image-proxy${pathWithQuery}`;
+            try {
+                const urlObj = new URL(imageUrl);
+                // 获取最后一部分作为图片ID
+                const pathParts = urlObj.pathname.split('/');
+                const imagePart = pathParts[pathParts.length - 1];
+                proxyUrl = `/api/image-proxy/${imagePart}${urlObj.search || ''}`;
+                console.log(`🖼️ 背景Imgur图片代理URL: ${proxyUrl}`);
+            } catch (e) {
+                console.log('URL解析错误，使用原始URL:', e.message);
+            }
         }
     }
     
@@ -427,8 +518,9 @@ function applyBackgroundImage(imageUrl) {
         showNotification('🌌 背景已切换！', 'success');
     };
     
-    bgImage.onerror = function() {
-        console.log('❌ 背景图片加载失败，保持默认背景');
+    bgImage.onerror = function(e) {
+        console.log('❌ 背景图片加载失败，保持默认背景:', e.message);
+        console.log(`尝试的URL: ${proxyUrl}`);
     };
     
     bgImage.src = proxyUrl;
@@ -654,18 +746,42 @@ async function refreshAllCardBackgrounds() {
                 const imageData = shuffledImages[i];
                 
                 if (imageData && imageData.pictureUrl) {
-                    // 处理图片URL，使用本地代理
+                    // 处理图片URL，使用代理
                     let proxyUrl = imageData.pictureUrl;
                     if (!proxyUrl.startsWith('/') && !proxyUrl.startsWith('data:')) {
                         // 检测URL类型并应用相应的代理
-                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net')) {
-                            const urlObj = new URL(proxyUrl);
-                            const pathWithQuery = urlObj.pathname + urlObj.search;
-                            proxyUrl = `/image-proxy/pixiv${pathWithQuery}`;
+                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net') || proxyUrl.includes('pximg.net')) {
+                            try {
+                                const urlObj = new URL(proxyUrl);
+                                // 提取Pixiv域名后的完整路径
+                                let fullPath = '';
+                                
+                                if (proxyUrl.includes('pixiv.re')) {
+                                    fullPath = urlObj.pathname.replace(/^\//, ''); // 移除开头的斜杠
+                                } else if (proxyUrl.includes('pximg.net')) {
+                                    fullPath = urlObj.pathname.replace(/^\//, '');
+                                } else {
+                                    // 其他Pixiv镜像站，尝试提取完整路径
+                                    fullPath = urlObj.pathname.replace(/^\//, '');
+                                }
+                                
+                                // 使用代理处理图片，保留完整路径
+                                proxyUrl = `/api/image-proxy/pixiv/${fullPath}${urlObj.search || ''}`;
+                                console.log(`♻️ 刷新卡片${i+1} Pixiv图片代理URL: ${proxyUrl}`);
+                            } catch (e) {
+                                console.log('URL解析错误，使用原始URL:', e.message);
+                            }
                         } else if (proxyUrl.includes('imgur.com')) {
-                            const urlObj = new URL(proxyUrl);
-                            const pathWithQuery = urlObj.pathname + urlObj.search;
-                            proxyUrl = `/image-proxy${pathWithQuery}`;
+                            try {
+                                const urlObj = new URL(proxyUrl);
+                                // 获取最后一部分作为图片ID
+                                const pathParts = urlObj.pathname.split('/');
+                                const imagePart = pathParts[pathParts.length - 1];
+                                proxyUrl = `/api/image-proxy/${imagePart}${urlObj.search || ''}`;
+                                console.log(`♻️ 刷新卡片${i+1} Imgur图片代理URL: ${proxyUrl}`);
+                            } catch (e) {
+                                console.log('URL解析错误，使用原始URL:', e.message);
+                            }
                         }
                     }
                     
@@ -684,8 +800,9 @@ async function refreshAllCardBackgrounds() {
                             showNotification('✨ 所有角色背景已更新完成！', 'success');
                         }
                     };
-                    backgroundImg.onerror = function() {
-                        console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
+                    backgroundImg.onerror = function(e) {
+                        console.log(`❌ 角色 ${character.name} 的背景图片加载失败:`, e.message);
+                        console.log(`尝试的URL: ${proxyUrl}`);
                         character.backgroundImage = null;
                         updateCardTexture(i);
                         loadedCount++;

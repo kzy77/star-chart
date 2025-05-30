@@ -152,3 +152,107 @@ MIT License - 可自由使用和修改
 ---
 
 **享受你的原神风格导航页吧！** ✨🎮
+
+## 原神风格3D卡片导航
+
+### 简介
+
+使用Three.js实现的原神风格3D卡片导航，带有复杂轨道运动、星空背景和交互效果。卡片加载Pixiv和其他图片源的精美图片作为背景。
+
+### 功能特点
+
+- 3D椭圆轨迹卡片展示，带有流畅的动画效果
+- API图片自动加载并应用为卡片背景
+- 图片缓存系统，减少API请求
+- 悬停暂停轨道动画，点击卡片跳转到对应网站
+- 粒子系统营造星空氛围
+- 音效系统增强交互体验
+- 响应式设计，适配不同屏幕尺寸
+
+### 本地开发
+
+1. 安装依赖
+
+```bash
+npm install
+```
+
+2. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+3. 构建项目
+
+```bash
+npm run build
+```
+
+### Cloudflare Pages部署
+
+本项目支持直接部署到Cloudflare Pages。以下是部署步骤：
+
+1. Fork本仓库或上传代码到你自己的Git仓库
+2. 在Cloudflare Pages创建一个新项目
+3. 连接到你的Git仓库
+4. 设置构建命令为 `npm run build`
+5. 设置构建输出目录为 `dist`
+6. 点击部署
+
+部署完成后，Cloudflare Pages会自动处理以下功能：
+- 通过Cloudflare Functions处理API请求
+- 代理Pixiv和其他图片源以解决跨域问题
+- 提供全球CDN加速
+
+### API和图片代理
+
+本项目使用以下API和代理路径：
+
+- `/api/duckmo` - DuckMo图片API代理
+- `/api/image-proxy/pixiv/[完整路径]` - Pixiv图片代理，支持完整路径
+  - 例如：`/api/image-proxy/pixiv/img-master/img/2024/06/30/08/47/53/120104287_p1_master1200.jpg`
+  - 自动将 `i.pixiv.re` 域名后的完整路径添加到代理路径中
+- `/api/image-proxy/[图片ID]` - Imgur等通用图片代理
+
+这些路径在本地开发和Cloudflare部署环境中都能正常工作。
+
+### Pixiv图片代理支持的格式
+
+Pixiv图片代理会智能处理不同格式的图片URL，包括：
+
+1. **master1200格式**：`img-master/img/YYYY/MM/DD/HH/MM/SS/IMAGE_ID_pNUM_master1200.jpg`
+2. **原始格式**：`img-original/img/YYYY/MM/DD/HH/MM/SS/IMAGE_ID_pNUM.jpg`
+
+代理服务会自动尝试多种URL格式以确保能够成功获取图片，包括：
+- 尝试从 `i.pixiv.re` 获取原图
+- 尝试从 `i.pximg.net` 获取原图 
+- 支持自动转换 master1200 到原始图片格式
+
+### 高级定制
+
+1. **添加/修改角色卡片**
+
+在`main.js`中修改`genshinCharacters`数组，每个对象代表一个卡片。
+
+```javascript
+{
+  name: '甘雨',            // 显示名称
+  url: 'https://example.com', // 点击跳转地址
+  element: '冰',          // 元素类型
+  rarity: 5,              // 稀有度（星级）
+  color: '#4A90E2',       // 主题色
+  description: '服务描述', // 描述文本
+  vision: '冰',           // 神之眼类型
+  weapon: '弓',           // 武器类型
+  region: '璃月'           // 地区
+}
+```
+
+2. **自定义背景**
+
+你可以修改`setDefaultBackground`函数来自定义默认背景样式。
+
+### 许可证
+
+此项目为MIT许可证，详见LICENSE文件。

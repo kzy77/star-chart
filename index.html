@@ -3,81 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>原神风格导航页</title>
-    <link rel="preconnect" href="https://fonts.cloudflare.com" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.cloudflare.com/css2?family=Orbitron:wght@400;700;900&display=swap">
-    <link rel="stylesheet" href="https://fonts.cloudflare.com/css2?family=Orbitron:wght@400;700;900&display=swap" media="print" onload="this.media='all'">
-    <noscript>
-        <link rel="stylesheet" href="https://fonts.cloudflare.com/css2?family=Orbitron:wght@400;700;900&display=swap">
-    </noscript>
+    <title>原神风格3D卡片导航</title>
+    <meta name="description" content="一个基于Three.js的原神风格3D卡片导航页面">
+    <meta name="keywords" content="原神, 3D, 导航, Three.js, WebGL">
+    <meta name="author" content="Chunk">
+    <!-- 安全策略 - 更新图片URL格式 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.cloudflare.com; font-src 'self' https://fonts.cloudflare.com; img-src 'self' data: https://*.imgur.com https://*.pixiv.re https://*.pixiv.cat https://*.pixiv.net blob: /api/image-proxy/ /image-proxy/ http://localhost:*; connect-src 'self' https://api.mossia.top http://localhost:*; worker-src 'self' blob:;">
+    <!-- 引用本地样式 -->
     <link rel="stylesheet" href="style.css">
+    <!-- 使用Cloudflare CDN加载字体 -->
+    <link href="https://fonts.cloudflare.com/css?family=Orbitron:400,700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- 背景切换工具 -->
-    <div id="background-switcher" style="position: fixed; top: 10px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: white; font-family: 'Orbitron', sans-serif;">
-        <h3 style="margin: 0 0 10px 0; font-size: 14px;">🌌 随机背景切换器</h3>
-        <button id="change-background" style="background: linear-gradient(45deg, #00BCD4, #9C27B0); border: none; padding: 8px 16px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
-            🎲 切换背景
-        </button>
-        <button id="refresh-cards" style="background: linear-gradient(45deg, #FF6B6B, #4ECDC4); border: none; padding: 8px 16px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; margin-bottom: 10px; display: block; width: 100%;">
-            🎨 刷新卡片背景
-        </button>
-        <label style="display: block; margin-bottom: 10px; cursor: pointer; font-size: 12px;">
-            <input type="checkbox" id="pixiv-proxy-toggle" style="margin-right: 5px;"> 
-            🔬 启用Pixiv高级模式 (实验性)
-        </label>
-        <button id="hide-background-switcher" style="background: #666; border: none; padding: 4px 8px; border-radius: 3px; color: white; cursor: pointer; font-size: 12px;">
-            隐藏
-        </button>
-        <div style="font-size: 11px; margin-top: 8px; line-height: 1.3; max-width: 180px;">
-            🎯 随机切换背景图片（无跨域限制）<br/>
-            💫 页面加载时自动应用随机背景<br/>
-            🎨 卡片背景来自多个支持CORS的图片API<br/>
-            🔬 高级模式：尝试使用Pixiv反代获取精选图片<br/>
-            🎮 <strong>点击角色卡片打开对应网站</strong><br/>
-            ✨ 悬停卡片可看到发光特效<br/>
-            ⏸️ <strong>悬停时所有卡片停止旋转</strong>
+    <div id="info">
+        <h1>原神风格3D卡片导航</h1>
+        <p>将鼠标悬停在卡片上可暂停旋转，点击卡片可访问对应网站</p>
+        <p>支持本地开发与Cloudflare Pages部署环境</p>
+    </div>
+    
+    <!-- 测试图片代理 -->
+    <div id="test-proxy" style="display:none; position:fixed; bottom:80px; right:20px; background:rgba(0,0,0,0.7); padding:15px; border-radius:10px; color:white; z-index:1000;">
+        <h3>代理测试</h3>
+        <div>
+            <p>Pixiv图片代理测试:</p>
+            <img src="/api/image-proxy/pixiv/img-master/img/2024/06/30/08/47/53/120104287_p1_master1200.jpg" alt="测试图片" style="max-width:200px; max-height:200px;">
+            <p>原图地址: i.pixiv.re/img-master/img/2024/06/30/08/47/53/120104287_p1_master1200.jpg</p>
         </div>
+    </div>
+    
+    <!-- 控制面板（默认隐藏，按F12开发者工具激活） -->
+    <div id="background-switcher" style="display: none;">
+        <h3>背景控制面板</h3>
+        <button onclick="setRandomBackground()">随机切换背景</button>
+        <button onclick="refreshAllCardBackgrounds()">刷新所有卡片背景</button>
+        <button onclick="document.getElementById('test-proxy').style.display='block'">显示代理测试</button>
     </div>
     
     <script type="module" src="main.js"></script>
     
-    <script>
-        // 背景切换功能
-        document.getElementById('change-background').addEventListener('click', function() {
-            // 调用主JS文件中的setRandomBackground函数
-            if (window.setRandomBackground) {
-                window.setRandomBackground();
-            } else {
-                alert('背景切换功能正在加载中，请稍后再试...');
-            }
-        });
+    <style>
+        #info {
+            position: fixed;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8), 0 0 10px rgba(148, 0, 211, 0.5);
+            z-index: 100;
+            pointer-events: none;
+            padding: 10px;
+        }
         
-        // 刷新卡片背景功能
-        document.getElementById('refresh-cards').addEventListener('click', function() {
-            // 调用主JS文件中的refreshAllCardBackgrounds函数
-            if (window.refreshAllCardBackgrounds) {
-                window.refreshAllCardBackgrounds();
-            } else {
-                alert('卡片刷新功能正在加载中，请稍后再试...');
-            }
-        });
+        #info h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, #FFD700, #FF69B4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.7));
+        }
         
-        // 隐藏背景切换器
-        document.getElementById('hide-background-switcher').addEventListener('click', function() {
-            document.getElementById('background-switcher').style.display = 'none';
-        });
+        #info p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
         
-        // Pixiv高级模式开关
-        document.getElementById('pixiv-proxy-toggle').addEventListener('change', function() {
-            window.enablePixivProxy = this.checked;
-            if (this.checked) {
-                console.log('🔬 已启用Pixiv高级模式 - 将尝试使用反代获取高质量图片');
-                alert('⚠️ Pixiv高级模式已启用！\n\n注意：此模式使用反代服务，可能存在不稳定性。\n如果图片加载失败，会自动回退到安全模式。');
-            } else {
-                console.log('🛡️ 已关闭Pixiv高级模式 - 使用安全的CORS图片API');
-            }
-        });
-    </script>
+        #background-switcher {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            z-index: 1000;
+        }
+        
+        #background-switcher button {
+            background: linear-gradient(135deg, #9370DB, #4B0082);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+        }
+        
+        #background-switcher button:hover {
+            background: linear-gradient(135deg, #B19CD9, #663399);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .star-trail {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.7;
+            animation: fade 1s forwards;
+        }
+        
+        @keyframes fade {
+            0% { transform: scale(0.5); opacity: 0.7; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        @media (max-width: 768px) {
+            #info h1 { font-size: 20px; }
+            #info p { font-size: 14px; }
+        }
+    </style>
 </body>
 </html>
