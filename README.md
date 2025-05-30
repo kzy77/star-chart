@@ -47,49 +47,8 @@
 4. **访问页面**
    打开浏览器访问 `http://localhost:5173`
 
-## 🖼️ 添加真实原神人物图片
-
-### 方法1: 使用内置生成器（推荐）
-
-1. 打开页面后，点击左上角的"生成角色头像"按钮
-2. 系统会自动下载13个原神风格的角色头像
-3. 创建文件夹 `images/characters/`
-4. 将下载的图片按以下命名放入文件夹：
-   - `甘雨.png`
-   - `胡桃.png`
-   - `雷电将军.png`
-   - `钟离.png`
-   - `魈.png`
-   - `八重神子.png`
-   - `温迪.png`
-   - `刻晴.png`
-   - `迪卢克.png`
-   - `芭芭拉.png`
-   - `菲谢尔.png`
-   - `香菱.png`
-   - `北斗.png`
-
-### 方法2: 使用高清原神官方图片
-
-1. 从以下网站下载高质量原神人物图片：
-   - [原神官网](https://genshin.mihoyo.com/)
-   - [原神Wiki](https://genshin-impact.fandom.com/)
-   - [Pixiv](https://www.pixiv.net/)
-
-2. 将图片调整为 400x400 像素
-3. 按上述命名规则保存到 `images/characters/` 文件夹
-
-### 方法3: 修改代码使用网络图片
-
-在 `main.js` 中找到 `genshinCharacters` 数组，修改各角色的 `imageUrl` 字段：
-
-```javascript
-{
-    name: '甘雨',
-    imageUrl: 'https://your-image-url.com/ganyu.jpg'
-    // ... 其他属性
-}
-```
+## 🖼️ 添加原神卡片人物图片
+通过图床API动态随机生成
 
 ## 🎨 自定义配置
 

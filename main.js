@@ -62,8 +62,16 @@ const imageCache = {
             const result = await fetchDuckMoImages({ num: this.BATCH_SIZE });
             
             if (result && result.data) {
+                const processedImages = result.data.map(item => {
+                    const originalUrl = item.urlsList.find(urlItem => urlItem.urlSize === 'original');
+                    return {
+                        ...item,
+                        pictureUrl: originalUrl ? originalUrl.url : item.urlsList[0]?.url || getFallbackImageUrl()
+                    };
+                });
+
                 // 添加新图片到缓存，避免重复
-                const newImages = result.data.filter(img => 
+                const newImages = processedImages.filter(img => 
                     !this.images.some(existing => existing.pictureUrl === img.pictureUrl)
                 );
                 this.images.push(...newImages);
@@ -111,7 +119,7 @@ async function fetchDuckMoImages(options = {}) {
         
         window.lastFetchTime = now;
 
-        const response = await fetch('https://api.mossia.top/duckMo/x', {
+        const response = await fetch('https://api.mossia.top/duckMo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -122,13 +130,11 @@ async function fetchDuckMoImages(options = {}) {
                 ...(dateBefore && { dateBefore })
             })
         });
-
         if (!response.ok) {
             if (response.status === 429) {
                 console.log('⚠️ API 请求过于频繁，切换到备用图片...');
                 return { success: true, data: Array(num).fill().map(() => ({
-                    url: getFallbackImageUrl(),
-                    pictureUrl: getFallbackImageUrl(),
+                    urlsList: [{ url: getFallbackImageUrl(), urlSize: 'original' }],
                     xCreateDate: Date.now()
                 }))};
             }
@@ -136,7 +142,8 @@ async function fetchDuckMoImages(options = {}) {
         }
 
         const result = await response.json();
-        
+        console.log('图库API接口返回：{}', result);
+
         if (!result.success) {
             console.log('❌ DuckMo API 请求失败:', result.message);
             return null;
@@ -144,7 +151,7 @@ async function fetchDuckMoImages(options = {}) {
 
         return result;
     } catch (error) {
-        console.log('❌ DuckMo API 请求失败:', error.message);
+        console.log('❌ DuckMo API 请求失败 ERROR:', error.message);
         return null;
     }
 }
@@ -154,6 +161,7 @@ async function getRandomImageUrl() {
     try {
         // 默认优先使用Pixiv反代
         const pixivUrl = await getDuckMoImageWithProxy();
+        console.log('Pixiv反代获取图片URL:', pixivUrl);
         if (pixivUrl) {
             return pixivUrl;
         }
@@ -214,19 +222,22 @@ function getFallbackImageUrl() {
 async function getDuckMoImageWithProxy() {
     try {
         // 获取当前卡片数量
-        const currentCardCount = cards.length;
-        
-        // 从缓存获取图片
-        const cachedImages = await imageCache.getImages(currentCardCount);
+        // 从缓存获取一张图片用于背景
+        const cachedImages = await imageCache.getImages(1);
         
         if (cachedImages && cachedImages.length > 0) {
             const randomImageData = cachedImages[Math.floor(Math.random() * cachedImages.length)];
             
             if (randomImageData.pictureUrl) {
                 // 使用反代服务来避免CORS和防盗链问题
-                const proxyUrl = randomImageData.pictureUrl.replace('https://i.pixiv.re/', 'https://i.pixiv.cat/');
-                console.log(`🎨 获取到Pixiv图片: ${randomImageData.url}`);
-                console.log(`📅 创建时间: ${new Date(randomImageData.xCreateDate).toLocaleString()}`);
+                const originalUrlObject = randomImageData.urlsList.find(item => item.urlSize === 'original');
+                const proxyUrl = originalUrlObject ? originalUrlObject.url : null;
+                
+                if (!proxyUrl) {
+                    console.log('未找到 original 尺寸的图片 URL');
+                    return null;
+                }
+                console.log(`🎨 获取到Pixiv图片: ${originalUrlObject.url}`);
                 return proxyUrl;
             }
         }
@@ -237,129 +248,293 @@ async function getDuckMoImageWithProxy() {
     }
 }
 
-// 设置随机背景图片
-async function setRandomBackground() {
-    let selectedImage = await getRandomImageUrl();
-    let corsAttempted = false;
+// 设置默认背景（不请求API）
+function setDefaultBackground() {
+    // 立即设置默认渐变背景
+    document.body.style.background = `
+        linear-gradient(135deg,
+            #667eea 0%,
+            #764ba2 25%,
+            #f093fb 50%,
+            #f5576c 75%,
+            #4facfe 100%
+        )
+    `;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundAttachment = 'fixed';
     
-    // 显示加载提示
-    console.log('正在加载新背景...');
+    // 添加半透明覆盖层保持原神风格
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            135deg,
+            rgba(138, 43, 226, 0.2) 0%,
+            rgba(255, 20, 147, 0.1) 25%,
+            rgba(0, 191, 255, 0.15) 50%,
+            rgba(255, 215, 0, 0.1) 75%,
+            rgba(50, 205, 50, 0.05) 100%
+        );
+        z-index: -2;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.8s ease-in-out;
+    `;
+    overlay.id = 'bg-overlay';
     
-    function loadBackgroundImage(withCors = true) {
-        // 创建背景图片元素
-        const bgImage = new Image();
+    // 删除旧的覆盖层
+    const oldOverlay = document.getElementById('bg-overlay');
+    if (oldOverlay) {
+        oldOverlay.remove();
+    }
+    
+    document.body.appendChild(overlay);
+    
+    // 显示覆盖层
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+    }, 100);
+    
+    console.log('✨ 默认背景已设置');
+}
+
+// 异步加载图片并应用到背景和卡片
+async function loadAndApplyImages() {
+    showNotification('🎨 正在为您获取精美图片...', 'info');
+    
+    // 计算需要获取的图片数量（卡片数量+1张用于背景）
+    const requiredImages = genshinCharacters.length + 1;
+    
+    try {
+        // 一次性获取所有需要的图片
+        const images = await imageCache.getImages(requiredImages);
         
-        // 设置crossOrigin以避免canvas污染（如果需要）
-        if (withCors) {
-            bgImage.crossOrigin = 'anonymous';
-        }
-        
-        bgImage.onload = function() {
-            // 淡入效果
-            document.body.style.transition = 'background-image 0.8s ease-in-out';
+        if (images && images.length > 0) {
+            console.log(`✅ 成功获取 ${images.length} 张图片`);
+            
+            // 从获取的图片中随机选择一张作为背景
+            const bgImageData = images[Math.floor(Math.random() * images.length)];
             
             // 应用背景图片
-            document.body.style.backgroundImage = `url(${selectedImage})`;
-            document.body.style.backgroundSize = 'cover';
-            document.body.style.backgroundPosition = 'center';
-            document.body.style.backgroundRepeat = 'no-repeat';
-            document.body.style.backgroundAttachment = 'fixed';
-            
-            // 添加半透明覆盖层保持原神风格
-            const overlay = document.createElement('div');
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(
-                    135deg,
-                    rgba(138, 43, 226, 0.2) 0%,
-                    rgba(255, 20, 147, 0.1) 25%,
-                    rgba(0, 191, 255, 0.15) 50%,
-                    rgba(255, 215, 0, 0.1) 75%,
-                    rgba(50, 205, 50, 0.05) 100%
-                );
-                z-index: -2;
-                pointer-events: none;
-                opacity: 0;
-                transition: opacity 0.8s ease-in-out;
-            `;
-            overlay.id = 'bg-overlay';
-            
-            // 删除旧的覆盖层
-            const oldOverlay = document.getElementById('bg-overlay');
-            if (oldOverlay) {
-                oldOverlay.remove();
+            if (bgImageData && bgImageData.pictureUrl) {
+                applyBackgroundImage(bgImageData.pictureUrl);
             }
             
-            document.body.appendChild(overlay);
-            
-            // 延迟显示覆盖层
-            setTimeout(() => {
-                overlay.style.opacity = '1';
-            }, 100);
-            
-            console.log('✨ 随机背景已更换!');
-            
-            // 显示切换成功提示
-            showNotification('🌌 背景已切换！', 'success');
-        };
-        
-        bgImage.onerror = function() {
-            console.log(`❌ 背景图片加载失败${withCors ? '(CORS)' : ''}，尝试下一张...`);
-            
-            // 如果是CORS错误且还没有尝试过不设置CORS，则重试
-            if (withCors && !corsAttempted) {
-                corsAttempted = true;
-                console.log('🔄 尝试不设置CORS重新加载...');
-                loadBackgroundImage(false);
-                return;
-            }
-            
-            showNotification('⚠️ 背景加载失败，重试中...', 'warning');
-            
-            // 多次重试机制
-            let retryCount = 0;
-            const maxRetries = 3;
-            
-            function retryLoad() {
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                    console.log(`🔄 第${retryCount}次重试...`);
-                    getRandomImageUrl().then(newUrl => {
-                        selectedImage = newUrl;
-                        corsAttempted = false; // 重置CORS尝试标志
-                        loadBackgroundImage(true);
-                    });
-                    return; // 避免执行下面的代码
-                } else {
-                    console.log('❌ 达到最大重试次数，使用默认渐变背景');
-                    showNotification('使用默认背景', 'info');
-                    // 设置默认渐变背景
-                    document.body.style.background = `
-                        linear-gradient(135deg, 
-                            #667eea 0%, 
-                            #764ba2 25%, 
-                            #f093fb 50%, 
-                            #f5576c 75%, 
-                            #4facfe 100%
-                        )
-                    `;
+            // 剩余图片随机分配给卡片
+            const shuffledImages = [...images].sort(() => 0.5 - Math.random());
+            for (let i = 0; i < genshinCharacters.length && i < shuffledImages.length; i++) {
+                const character = genshinCharacters[i];
+                const imageData = shuffledImages[i];
+                
+                if (imageData && imageData.pictureUrl) {
+                    character.backgroundImageUrl = imageData.pictureUrl;
+                    
+                    // 预加载卡片背景图片
+                    const backgroundImg = new Image();
+                    backgroundImg.crossOrigin = 'anonymous';
+                    backgroundImg.onload = function() {
+                        character.backgroundImage = backgroundImg;
+                        updateCardTexture(i);
+                    };
+                    backgroundImg.onerror = function() {
+                        console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
+                        updateCardTexture(i);
+                    };
+                    backgroundImg.src = imageData.pictureUrl;
                 }
             }
             
-            setTimeout(() => {
-                retryLoad();
-            }, 1000);
-        };
+            showNotification('✨ 图片加载完成！', 'success');
+        } else {
+            console.log('❌ 未能获取到图片，使用默认背景');
+            showNotification('⚠️ 使用默认背景', 'warning');
+        }
+    } catch (error) {
+        console.log('❌ 图片加载失败:', error.message);
+        showNotification('⚠️ 图片加载失败，使用默认背景', 'warning');
+    }
+}
+
+// 应用背景图片
+function applyBackgroundImage(imageUrl) {
+    if (!imageUrl) return;
+    
+    console.log('正在应用背景图片...');
+    const bgImage = new Image();
+    bgImage.crossOrigin = 'anonymous';
+    
+    bgImage.onload = function() {
+        // 淡入效果
+        document.body.style.transition = 'background-image 0.8s ease-in-out';
         
-        bgImage.src = selectedImage;
+        // 应用背景图片
+        document.body.style.backgroundImage = `url(${imageUrl})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.backgroundAttachment = 'fixed';
+        
+        console.log('✨ 背景图片已更新!');
+        showNotification('🌌 背景已切换！', 'success');
+    };
+    
+    bgImage.onerror = function() {
+        console.log('❌ 背景图片加载失败，保持默认背景');
+    };
+    
+    bgImage.src = imageUrl;
+}
+
+// 创建卡片（不加载背景图片）
+function createCards() {
+    const cardWidth = 24;
+    const cardHeight = 30;
+    const radius = Math.min(window.innerWidth, window.innerHeight) * 0.15; // 基础半径
+    
+    console.log('🎴 开始创建角色卡片...');
+    
+    for (let i = 0; i < genshinCharacters.length; i++) {
+        const character = genshinCharacters[i];
+        
+        // 使用默认背景创建卡片
+        const geometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+        const texture = createCardTexture(character); // 不传入背景图片URL
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        
+        const card = new THREE.Mesh(geometry, material);
+        
+        // 3D椭圆轨迹，突出由远及近的视觉效果
+        const angle = (i / genshinCharacters.length) * Math.PI * 2;
+        const cardX = Math.cos(angle) * radius * 2.0;
+        const cardZ = Math.sin(angle) * radius * 0.25;
+        
+        card.position.set(cardX, 0, cardZ);
+        
+        // 设置初始朝向
+        const initialAngle = angle;
+        if (initialAngle >= Math.PI * 0.3 && initialAngle <= Math.PI * 0.7) {
+            card.rotation.set(0, 0, 0);
+        } else {
+            card.lookAt(cardX * 0.3, 0, cardZ * 0.3);
+        }
+        
+        cardMetas.push({
+            angle: angle,
+            radius: radius,
+            character: character,
+            originalScale: 1,
+            targetScale: 1,
+            hovered: false
+        });
+        
+        scene.add(card);
+        cards.push(card);
     }
     
-    // 开始加载背景图片
-    loadBackgroundImage(true);
+    console.log('✅ 卡片创建完成');
+}
+
+// 修改初始化函数
+async function init() {
+    // 先设置默认背景
+    setDefaultBackground();
+    
+    // 初始化卡片旋转状态
+    window.cardsPaused = false;
+    window.pauseDuration = 0;
+    window.hasShownPauseHint = false;
+    
+    // 场景
+    scene = new THREE.Scene();
+    
+    // 相机
+    const cardHeight = 30;
+    const maxScale = 2.6;
+    const maxCardHeight = cardHeight * maxScale;
+    const radius = Math.min(window.innerWidth, window.innerHeight) * 0.15;
+    const cameraDistance = Math.max(60, radius * 0.95 + maxCardHeight * 0.85);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 60, cameraDistance);
+    camera.lookAt(0, 0, 0);
+    
+    // 渲染器
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    document.body.appendChild(renderer.domElement);
+
+    // 光源
+    const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
+    scene.add(ambientLight);
+    
+    const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+    pointLight.position.set(0, 0, 25);
+    scene.add(pointLight);
+    
+    // 添加彩色光源增强氛围
+    const purpleLight = new THREE.PointLight(0x9370DB, 0.8, 50);
+    purpleLight.position.set(-20, 10, 0);
+    scene.add(purpleLight);
+    
+    const goldLight = new THREE.PointLight(0xFFD700, 0.8, 50);
+    goldLight.position.set(20, 10, 0);
+    scene.add(goldLight);
+    
+    initAudio();
+    
+    // 先创建带默认背景的卡片
+    createCards();
+    createParticleSystem();
+    
+    // 延迟显示音效启动提示
+    setTimeout(() => {
+        showNotification('🎵 点击任意地方启用音效！', 'info');
+    }, 2000);
+    
+    // 异步加载图片并应用
+    setTimeout(() => {
+        loadAndApplyImages();
+    }, 1000);
+    
+    // 事件监听
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('click', onClick);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mousemove', createStarTrail);
+    
+    animate();
+}
+
+// 将原始的setRandomBackground函数保留但修改为使用新函数
+async function setRandomBackground() {
+    setDefaultBackground();
+    
+    // 异步加载外部图片
+    setTimeout(async () => {
+        try {
+            // 尝试从缓存获取一张图片
+            const cachedImages = await imageCache.getImages(1);
+            if (cachedImages && cachedImages.length > 0) {
+                const imageUrl = cachedImages[0].pictureUrl;
+                if (imageUrl) {
+                    applyBackgroundImage(imageUrl);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.log('获取缓存图片失败:', error.message);
+        }
+    }, 500);
 }
 
 // 显示通知消息
@@ -1111,100 +1286,6 @@ function createParticleSystem() {
     scene.add(particleSystem);
 }
 
-// 创建卡片
-async function createCards() {
-    const cardWidth = 24;
-    const cardHeight = 30;
-    const radius = Math.min(window.innerWidth, window.innerHeight) * 0.15; // 进一步缩小基础半径，确保完整轨迹可见
-    
-    console.log('🎨 开始为角色加载随机背景图片...');
-    
-    let loadedCount = 0;
-    const totalCards = genshinCharacters.length;
-    
-    for (let i = 0; i < genshinCharacters.length; i++) {
-        const character = genshinCharacters[i];
-        // 为每个角色分配随机背景图片
-        const backgroundImageUrl = await getRandomImageUrl();
-        character.backgroundImageUrl = backgroundImageUrl;
-        
-        // 预加载背景图片
-        const backgroundImg = new Image();
-        // 设置crossOrigin以避免canvas污染
-        backgroundImg.crossOrigin = 'anonymous';
-        backgroundImg.onload = function() {
-            character.backgroundImage = backgroundImg;
-            // 背景图片加载完成后重新创建纹理
-            updateCardTexture(i);
-        };
-        backgroundImg.onerror = function() {
-            console.log(`角色 ${character.name} 的背景图片加载失败，使用默认背景`);
-            // 尝试重新获取不同的图片
-            let retryCount = 0;
-            function retryCardBackground() {
-                retryCount++;
-                if (retryCount <= 2) {
-                    console.log(`🔄 为${character.name}重试背景图片加载...`);
-                    getRandomImageUrl().then(newBgUrl => {
-                        character.backgroundImageUrl = newBgUrl;
-                        backgroundImg.src = newBgUrl;
-                    });
-                } else {
-                    console.log(`❌ ${character.name}的背景图片多次加载失败，使用默认背景`);
-                    character.backgroundImage = null;
-                    updateCardTexture(i);
-                    loadedCount++;
-                    
-                    if (loadedCount === totalCards) {
-                        showNotification('⚠️ 部分背景加载失败，已使用默认背景', 'warning');
-                    }
-                }
-            }
-            setTimeout(retryCardBackground, 500);
-        };
-        backgroundImg.src = backgroundImageUrl;
-        
-        const geometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        const texture = createCardTexture(character, backgroundImageUrl);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            side: THREE.DoubleSide
-        });
-        
-        const card = new THREE.Mesh(geometry, material);
-        
-        // 3D椭圆轨迹，突出由远及近的视觉效果
-        const angle = (i / genshinCharacters.length) * Math.PI * 2;
-        const cardX = Math.cos(angle) * radius * 2.0; // 按图片要求，进一步扩大水平椭圆
-        const cardZ = Math.sin(angle) * radius * 0.25; // 按图片要求，更扁平的椭圆
-        
-        card.position.set(cardX, 0, cardZ);
-        
-        // 设置初始朝向
-        const initialAngle = angle;
-        if (initialAngle >= Math.PI * 0.3 && initialAngle <= Math.PI * 0.7) {
-            // 顶部区域正面朝向观察者
-            card.rotation.set(0, 0, 0);
-        } else {
-            // 其他位置稍微朝向中心
-            card.lookAt(cardX * 0.3, 0, cardZ * 0.3);
-        }
-        
-        cardMetas.push({
-            angle: angle,
-            radius: radius,
-            character: character,
-            originalScale: 1,
-            targetScale: 1,
-            hovered: false
-        });
-        
-        scene.add(card);
-        cards.push(card);
-    }
-}
-
 // 更新卡片纹理
 function updateCardTexture(cardIndex) {
     if (cardIndex >= 0 && cardIndex < cards.length) {
@@ -1215,77 +1296,6 @@ function updateCardTexture(cardIndex) {
         card.material.needsUpdate = true;
         console.log(`✨ 角色 ${character.name} 的背景已更新`);
     }
-}
-
-async function init() {
-    // 设置随机背景图片
-    await setRandomBackground();
-    
-    // 初始化卡片旋转状态
-    window.cardsPaused = false;
-    window.pauseDuration = 0;
-    window.hasShownPauseHint = false;
-    
-    // 场景
-    scene = new THREE.Scene();
-    
-    // 相机
-    // 计算最大卡片高度
-    const cardHeight = 30;
-    const maxScale = 2.6;
-    const maxCardHeight = cardHeight * maxScale;
-    // 计算椭圆轨迹最大半径
-    const radius = Math.min(window.innerWidth, window.innerHeight) * 0.15;
-    // 再次缩短相机距离
-    const cameraDistance = Math.max(60, radius * 0.95 + maxCardHeight * 0.85);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.set(0, 60, cameraDistance);
-    camera.lookAt(0, 0, 0);
-    
-    // 渲染器
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000000, 0);
-    document.body.appendChild(renderer.domElement);
-
-    // 光源
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.2);
-    scene.add(ambientLight);
-    
-    const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
-    pointLight.position.set(0, 0, 25);
-    scene.add(pointLight);
-    
-    // 添加彩色光源增强氛围
-    const purpleLight = new THREE.PointLight(0x9370DB, 0.8, 50);
-    purpleLight.position.set(-20, 10, 0);
-    scene.add(purpleLight);
-    
-    const goldLight = new THREE.PointLight(0xFFD700, 0.8, 50);
-    goldLight.position.set(20, 10, 0);
-    scene.add(goldLight);
-    
-    initAudio();
-    await createCards();
-    createParticleSystem();
-    
-    // 延迟显示音效启动提示
-    setTimeout(() => {
-        showNotification('🎵 点击任意地方启用音效！', 'info');
-    }, 2000);
-    
-    // 显示API更新通知
-    setTimeout(() => {
-        showNotification('🛡️ 已优化为最安全的无跨域API！', 'success');
-    }, 4000);
-    
-    // 事件监听
-    window.addEventListener('resize', onWindowResize);
-    window.addEventListener('click', onClick);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mousemove', createStarTrail);
-    
-    animate();
 }
 
 function animate() {
