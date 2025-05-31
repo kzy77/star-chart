@@ -23,22 +23,12 @@
         <p>本代码均由AI生成，如有问题，请反馈给AI</p>
     </div>
     
-    <!-- 测试图片代理 -->
-    <div id="test-proxy" style="display:none; position:fixed; bottom:80px; right:20px; background:rgba(0,0,0,0.7); padding:15px; border-radius:10px; color:white; z-index:1000;">
-        <h3>代理测试</h3>
-        <div>
-            <p>Pixiv图片代理测试:</p>
-            <img src="/api/image-proxy/pixiv/img-master/img/2024/06/30/08/47/53/120104287_p1_master1200.jpg" alt="测试图片" style="max-width:200px; max-height:200px;">
-            <p>原图地址: i.pixiv.re/img-master/img/2024/06/30/08/47/53/120104287_p1_master1200.jpg</p>
-        </div>
-    </div>
-    
-    <!-- 控制面板（默认隐藏，按F12开发者工具激活） -->
-    <div id="background-switcher" style="display: none;">
+    <!-- 控制面板（默认显示，R18模式仅在开发者工具下显示） -->
+    <div id="background-switcher">
         <h3>背景控制面板</h3>
         <button onclick="setRandomBackground()">随机切换背景</button>
         <button onclick="refreshAllCardBackgrounds()">刷新所有卡片背景</button>
-        <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+        <div id="r18-controls" style="display: none; margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
             <label for="r18-toggle" style="margin-right: 10px; color: white; font-size: 14px;">R18模式:</label>
             <input type="checkbox" id="r18-toggle" onchange="toggleR18Mode(this.checked)">
         </div>
@@ -49,7 +39,6 @@
                 <span id="speed-value" style="color: white; margin-left: 10px; min-width: 40px; text-align: right;">0.15</span>
             </div>
         </div>
-        <button onclick="document.getElementById('test-proxy').style.display='block'">显示代理测试</button>
     </div>
     
     <script type="module" src="main.js"></script>

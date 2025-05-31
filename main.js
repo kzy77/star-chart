@@ -11,7 +11,7 @@ let hoveredCardIndex = null;
 let starTrailCount = 0;
 const MAX_STAR_TRAILS = 10;
 let isR18ModeEnabled = false; // 新增：R18模式状态，默认为关闭
-let rotationSpeed = 0.15; // 新增：卡片旋转速度系数，默认为0.15
+let rotationSpeed = 0.06; // 新增：卡片旋转速度系数，默认为0.06
 
 // 音效系统
 let audioContext;
@@ -1738,25 +1738,27 @@ function isDevtoolsOpen() {
     return opened;
 }
 
-function showRandomBgPanelIfDevtools() {
-    const panel = document.getElementById('background-switcher');
-    if (!panel) return;
+// 只显示R18控制选项，当开发者工具打开时
+function showR18ControlsIfDevtools() {
+    const r18Controls = document.getElementById('r18-controls');
+    if (!r18Controls) return;
     if (isDevtoolsOpen()) {
-        panel.style.display = 'block';
+        r18Controls.style.display = 'flex';
     } else {
-        panel.style.display = 'none';
+        r18Controls.style.display = 'none';
     }
 }
 
 // 初始化时立即隐藏
 (function hideRandomBgPanelOnInit() {
-    const panel = document.getElementById('background-switcher');
-    if (panel) panel.style.display = 'none';
+    // 不再隐藏整个面板，只隐藏R18控制选项
+    const r18Controls = document.getElementById('r18-controls');
+    if (r18Controls) r18Controls.style.display = 'none';
 })();
 
-window.addEventListener('resize', showRandomBgPanelIfDevtools);
-window.addEventListener('focus', showRandomBgPanelIfDevtools);
-setTimeout(showRandomBgPanelIfDevtools, 800);
+window.addEventListener('resize', showR18ControlsIfDevtools);
+window.addEventListener('focus', showR18ControlsIfDevtools);
+setTimeout(showR18ControlsIfDevtools, 800);
 
 // 为没有图片的卡片创建丰富的渐变背景
 function createRichGradientBackground(ctx, character) {
