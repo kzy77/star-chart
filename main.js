@@ -9,6 +9,7 @@ const mouse = new THREE.Vector2();
 let hoveredCardIndex = null;
 let starTrailCount = 0;
 const MAX_STAR_TRAILS = 10;
+let isR18ModeEnabled = false; // 新增：R18模式状态，默认为关闭
 
 // 音效系统
 let audioContext;
@@ -128,7 +129,7 @@ async function fetchDuckMoImages(options = {}) {
             },
             body: JSON.stringify({
                 num: 20, // 固定请求最大数量
-                r18Type: 0, // r18 类型 0-不是 1-是
+                r18Type: isR18ModeEnabled ? 1 : 0, // 根据R18模式状态设置参数
                 sizeList: ['regular'],
                 ...(dateAfter && { dateAfter }),
                 ...(dateBefore && { dateBefore })
@@ -180,18 +181,18 @@ async function fetchDuckMoImages(options = {}) {
 // 从随机图片API获取图片URL
 async function getRandomImageUrl() {
     try {
-        // 默认优先使用Pixiv反代
-        const pixivUrl = await getDuckMoImageWithProxy();
-        console.log('Pixiv反代获取图片URL:', pixivUrl);
-        if (pixivUrl) {
-            return pixivUrl;
+        // 优先使用 DuckMo API (通过代理)
+        const duckMoImageUrl = await getDuckMoImageWithProxy();
+        console.log('DuckMo API 获取图片URL:', duckMoImageUrl);
+        if (duckMoImageUrl) {
+            return duckMoImageUrl;
         }
         
-        console.log('🔄 切换到备用图片模式');
-        return getFallbackImageUrl();
+        console.log('🔄 DuckMo API 失败，切换到备用图片模式');
+        return getFallbackImageUrl(); // 确保这里返回的是一个有效的URL字符串
     } catch (error) {
-        console.log('❌ 图片获取失败:', error.message);
-        return getFallbackImageUrl();
+        console.log('❌ 图片获取失败 (getRandomImageUrl):', error.message);
+        return getFallbackImageUrl(); // 确保这里返回的是一个有效的URL字符串
     }
 }
 
@@ -868,24 +869,21 @@ async function init() {
 
 // 将原始的setRandomBackground函数保留但修改为使用新函数
 async function setRandomBackground() {
-    setDefaultBackground();
-    
-    // 异步加载外部图片
-    setTimeout(async () => {
-        try {
-            // 尝试从缓存获取一张图片
-            const cachedImages = await imageCache.getImages(1);
-            if (cachedImages && cachedImages.length > 0) {
-                const imageUrl = cachedImages[0].pictureUrl;
-                if (imageUrl) {
-                    applyBackgroundImage(imageUrl);
-                    return;
-                }
-            }
-        } catch (error) {
-            console.log('获取缓存图片失败:', error.message);
+    showNotification('正在为您生成新的背景图，请稍候...', 'loading');
+    try {
+        const imageUrl = await getRandomImageUrl(); // 使用更新后的函数
+        if (imageUrl) {
+            applyBackgroundImage(imageUrl);
+            showNotification('背景图片已更新！', 'success');
+        } else {
+            showNotification('无法获取背景图片，请稍后重试。', 'error');
+            setDefaultBackground(); // 使用默认背景作为后备
         }
-    }, 500);
+    } catch (error) {
+        console.error('设置随机背景失败:', error);
+        showNotification('设置背景图片时出错。', 'error');
+        setDefaultBackground(); // 出错时也使用默认背景
+    }
 }
 
 // 显示通知消息
@@ -902,103 +900,43 @@ window.setRandomBackground = setRandomBackground;
 
 // 刷新所有卡片背景
 async function refreshAllCardBackgrounds() {
-    console.log('🎨 开始刷新所有卡片背景...');
-    showNotification('🎨 正在为所有角色重新加载背景图片...', 'info');
-    
-    // 计算需要获取的图片数量等于卡片数量
-    const requiredImages = genshinCharacters.length;
-    
+    showNotification('正在刷新所有卡片背景...请稍候', 'loading');
     try {
-        // 一次性获取所有需要的图片
-        const images = await imageCache.getImages(requiredImages);
+        const imageObjects = await imageCache.getImages(cards.length); // 获取足够数量的图片
         
-        if (images && images.length > 0) {
-            let loadedCount = 0;
-            const totalCards = genshinCharacters.length;
-            
-            // 随机分配图片给卡片
-            const shuffledImages = [...images].sort(() => 0.5 - Math.random());
-            
-            for (let i = 0; i < genshinCharacters.length && i < shuffledImages.length; i++) {
-                const character = genshinCharacters[i];
-                const imageData = shuffledImages[i];
-                
-                if (imageData && imageData.pictureUrl) {
-                    // 处理图片URL，使用代理
-                    let proxyUrl = imageData.pictureUrl;
-                    if (!proxyUrl.startsWith('/') && !proxyUrl.startsWith('data:')) {
-                        // 检测URL类型并应用相应的代理
-                        if (proxyUrl.includes('pixiv.re') || proxyUrl.includes('pixiv.cat') || proxyUrl.includes('pixiv.net') || proxyUrl.includes('pximg.net')) {
-                            try {
-                                const urlObj = new URL(proxyUrl);
-                                // 提取Pixiv域名后的完整路径
-                                let fullPath = '';
-                                
-                                if (proxyUrl.includes('pixiv.re')) {
-                                    fullPath = urlObj.pathname.replace(/^\//, ''); // 移除开头的斜杠
-                                } else if (proxyUrl.includes('pximg.net')) {
-                                    fullPath = urlObj.pathname.replace(/^\//, '');
-                                } else {
-                                    // 其他Pixiv镜像站，尝试提取完整路径
-                                    fullPath = urlObj.pathname.replace(/^\//, '');
-                                }
-                                
-                                // 使用代理处理图片，保留完整路径
-                                proxyUrl = `/api/image-proxy/pixiv/${fullPath}${urlObj.search || ''}`;
-                                console.log(`♻️ 刷新卡片${i+1} Pixiv图片代理URL: ${proxyUrl}`);
-                            } catch (e) {
-                                console.log('URL解析错误，使用原始URL:', e.message);
-                            }
-                        } else if (proxyUrl.includes('imgur.com')) {
-                            try {
-                                const urlObj = new URL(proxyUrl);
-                                // 获取最后一部分作为图片ID
-                                const pathParts = urlObj.pathname.split('/');
-                                const imagePart = pathParts[pathParts.length - 1];
-                                proxyUrl = `/api/image-proxy/${imagePart}${urlObj.search || ''}`;
-                                console.log(`♻️ 刷新卡片${i+1} Imgur图片代理URL: ${proxyUrl}`);
-                            } catch (e) {
-                                console.log('URL解析错误，使用原始URL:', e.message);
-                            }
-                        }
-                    }
-                    
-                    character.backgroundImageUrl = proxyUrl;
-                    
-                    // 预加载卡片背景图片
-                    const backgroundImg = new Image();
-                    backgroundImg.crossOrigin = 'anonymous';
-                    backgroundImg.onload = function() {
-                        character.backgroundImage = backgroundImg;
-                        updateCardTexture(i);
-                        loadedCount++;
-                        
-                        // 所有卡片加载完成
-                        if (loadedCount === Math.min(totalCards, shuffledImages.length)) {
-                            showNotification('✨ 所有角色背景已更新完成！', 'success');
-                        }
-                    };
-                    backgroundImg.onerror = function(e) {
-                        console.log(`❌ 角色 ${character.name} 的背景图片加载失败:`, e.message);
-                        console.log(`尝试的URL: ${proxyUrl}`);
-                        character.backgroundImage = null;
-                        updateCardTexture(i);
-                        loadedCount++;
-                        
-                        if (loadedCount === Math.min(totalCards, shuffledImages.length)) {
-                            showNotification('⚠️ 部分背景加载失败，已使用默认背景', 'warning');
-                        }
-                    };
-                    backgroundImg.src = proxyUrl;
-                }
-            }
-        } else {
-            console.log('❌ 未能获取到图片，使用默认背景');
-            showNotification('⚠️ 使用默认背景', 'warning');
+        if (!imageObjects || imageObjects.length < cards.length) {
+            showNotification('获取卡片背景图不足，部分卡片可能使用默认背景。', 'warning');
         }
+
+        const promises = cards.map(async (card, index) => {
+            try {
+                const imgObj = imageObjects[index % imageObjects.length]; // 循环使用获取到的图片
+                const imageUrl = imgObj ? imgObj.pictureUrl : null;
+                
+                if (imageUrl) {
+                    await setCardBackground(card.userData.metaIndex, imageUrl);
+                } else {
+                    console.warn(`卡片 ${index} 未能获取到背景图片，将使用默认背景`);
+                    // 如果没有获取到图片，则使用默认背景
+                    const character = cardMetas[card.userData.metaIndex];
+                    const defaultTexture = createCardTexture(character, null, card.userData.isHovered);
+                    card.material.map = defaultTexture;
+                    card.material.needsUpdate = true;
+                }
+            } catch (error) {
+                console.error(`刷新卡片 ${index} 背景失败:`, error);
+                const character = cardMetas[card.userData.metaIndex];
+                const defaultTexture = createCardTexture(character, null, card.userData.isHovered);
+                card.material.map = defaultTexture;
+                card.material.needsUpdate = true; 
+            }
+        });
+        
+        await Promise.all(promises);
+        showNotification('所有卡片背景已刷新完毕！', 'success');
     } catch (error) {
-        console.log('❌ 图片加载失败:', error.message);
-        showNotification('⚠️ 图片加载失败，使用默认背景', 'warning');
+        console.error('刷新所有卡片背景时发生错误:', error);
+        showNotification('刷新卡片背景失败。', 'error');
     }
 }
 
@@ -1257,7 +1195,7 @@ function initAudio() {
 
 // 创建默认头像
 function createDefaultAvatar(character) {
-    const canvas = document.createElement('canvas');
+                const canvas = document.createElement('canvas');
     canvas.width = 120;
     canvas.height = 120;
     const ctx = canvas.getContext('2d');
@@ -2062,5 +2000,28 @@ function addBackgroundTexture(ctx) {
     
     ctx.restore();
 }
+
+// 新增：切换R18模式的函数
+async function toggleR18Mode(isChecked) {
+    isR18ModeEnabled = isChecked;
+    const modeText = isR18ModeEnabled ? "开启" : "关闭";
+    showNotification(`R18模式已${modeText}。正在刷新背景图...`, 'info');
+    
+    // 清空现有图片缓存，以便获取新的R18或非R18图片
+    imageCache.images = [];
+    imageCache.lastFetchTime = 0;
+    console.log('🧹 R18模式切换，已清空图片缓存');
+
+    // 刷新主背景
+    await setRandomBackground();
+    // 刷新所有卡片背景
+    await refreshAllCardBackgrounds();
+    showNotification(`R18模式已${modeText}，背景图已刷新。`, 'success');
+}
+
+// 暴露给 HTML调用的函数
+window.setRandomBackground = setRandomBackground;
+window.refreshAllCardBackgrounds = refreshAllCardBackgrounds;
+window.toggleR18Mode = toggleR18Mode; // 新增：暴露切换R18模式的函数
 
 init();

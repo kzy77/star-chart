@@ -112,3 +112,48 @@ body::after {
         font-size: 14px;
     }
 }
+
+#background-switcher button:hover {
+    background: linear-gradient(135deg, #B19CD9, #663399);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 新增：R18 开关样式 */
+#r18-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 40px;
+    height: 20px;
+    background-color: #555;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s;
+}
+
+#r18-toggle::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+#r18-toggle:checked {
+    background-color: #FF69B4; /* R18激活时的颜色 */
+}
+
+#r18-toggle:checked::before {
+    transform: translateX(20px);
+}
+/* 结束：R18 开关样式 */
+
+.star-trail {
+    position: absolute;
+}

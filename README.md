@@ -35,14 +35,14 @@
    ```
 
 2. **安装依赖**
-   ```bash
-   npm install
+```bash
+npm install
    ```
 
 3. **启动开发服务器**
    ```bash
-   npm run dev
-   ```
+npm run dev
+```
 
 4. **访问页面**
    打开浏览器访问 `http://localhost:5173`
