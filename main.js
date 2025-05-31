@@ -1354,11 +1354,15 @@ function createDefaultAvatar(character) {
 
 // 修改createCardTexture函数，添加isHovered参数
 function createCardTexture(character, backgroundImageUrl = null, isHovered = false) {
+    // 高清渲染：分辨率提升2倍
+    const scale = 2;
+    const width = 256 * scale;
+    const height = 320 * scale;
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 320;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
-    
+    ctx.scale(scale, scale);
     // 非悬停状态：浅色渐变
     if (!isHovered) {
         // 简化背景，使用浅色渐变
@@ -1473,7 +1477,7 @@ function createCardTexture(character, backgroundImageUrl = null, isHovered = fal
     drawDescriptionBox(ctx, character, isHovered);
     
     // 创建纹理
-    const texture = new THREE.CanvasTexture(canvas);
+                const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     
     return texture;
@@ -1635,7 +1639,7 @@ function createParticleSystem() {
             color.setHex(0xFFA500); // 橙色落叶
         } else if (colorType < 0.85) {
             color.setHex(0xFF6347); // 红色落叶
-        } else {
+            } else {
             color.setHex(0x90EE90); // 绿色落叶
         }
         
