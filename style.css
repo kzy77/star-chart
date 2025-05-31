@@ -16,7 +16,7 @@ body {
 /* Three.js画布增强 */
 canvas {
     display: block;
-    filter: brightness(1.1) contrast(1.05);
+    filter: brightness(0.9) contrast(1.0);
 }
 
 /* 星系背景动画 */

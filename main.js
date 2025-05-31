@@ -1159,16 +1159,20 @@ function createCardTexture(character, backgroundImageUrl = null, isHovered = fal
         // 如果有背景图片，绘制在浅色背景之上，但添加半透明效果
         if (backgroundImageUrl && character.backgroundImage) {
             try {
-                // 半透明绘制图片
-                ctx.globalAlpha = 0.8; // 80%不透明度
+                // 半透明绘制图片，降低不透明度
+                ctx.globalAlpha = 0.6; // 降至60%不透明度
                 ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
                 ctx.globalAlpha = 1.0; // 恢复不透明度
                 
+                // 添加更深的暗化层减少刺眼感
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(0, 0, 256, 320);
+                
                 // 添加轻微的渐变覆盖，确保文字可读
                 const overlay = ctx.createLinearGradient(0, 100, 0, 320);
-                overlay.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                overlay.addColorStop(0.7, 'rgba(0, 0, 0, 0.4)');
-                overlay.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+                overlay.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
+                overlay.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
+                overlay.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
                 ctx.fillStyle = overlay;
                 ctx.fillRect(0, 100, 256, 220);
             } catch (e) {
@@ -1184,10 +1188,14 @@ function createCardTexture(character, backgroundImageUrl = null, isHovered = fal
                 // 完全不透明地绘制图片
                 ctx.drawImage(character.backgroundImage, 0, 0, 256, 320);
                 
+                // 添加暗化滤镜以减少刺眼感
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.fillRect(0, 0, 256, 320);
+                
                 // 添加轻微渐变覆盖确保文字可读性
                 const gradient = ctx.createLinearGradient(0, 150, 0, 320);
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.5)');
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
+                gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.6)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 150, 256, 170);
