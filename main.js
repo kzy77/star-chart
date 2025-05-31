@@ -812,6 +812,40 @@ async function init() {
         console.log('无法加载保存的旋转速度:', e.message);
     }
     
+    // 从本地存储加载控制面板显示状态
+    try {
+        const panelHidden = localStorage.getItem('controlPanelHidden');
+        // 默认为隐藏状态，除非明确设置为false
+        if (panelHidden === 'false') {
+            // 如果之前设置为显示，则显示控制面板
+            const panel = document.getElementById('control-panel');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const toggleBtn = document.getElementById('toggle-panel-btn');
+            if (panel) {
+                panel.classList.remove('panel-hidden');
+                if (toggleIcon) toggleIcon.style.transform = 'rotate(0deg)';
+                if (toggleBtn) toggleBtn.style.right = '220px'; // 控制面板显示时，按钮在左侧
+            }
+        } else {
+            // 默认或设置为隐藏，确保按钮在右侧，面板隐藏
+            const panel = document.getElementById('control-panel');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const toggleBtn = document.getElementById('toggle-panel-btn');
+            if (panel) panel.classList.add('panel-hidden');
+            if (toggleIcon) toggleIcon.style.transform = 'rotate(180deg)';
+            if (toggleBtn) toggleBtn.style.right = '20px';
+            
+            // 保存状态
+            try {
+                localStorage.setItem('controlPanelHidden', 'true');
+            } catch (e) {
+                console.log('无法保存控制面板状态:', e.message);
+            }
+        }
+    } catch (e) {
+        console.log('无法加载控制面板状态:', e.message);
+    }
+    
     // 先设置默认背景
     setDefaultBackground();
     
@@ -1750,7 +1784,7 @@ function showR18ControlsIfDevtools() {
 }
 
 // 初始化时立即隐藏
-(function hideRandomBgPanelOnInit() {
+(function hideR18ControlsOnInit() {
     // 不再隐藏整个面板，只隐藏R18控制选项
     const r18Controls = document.getElementById('r18-controls');
     if (r18Controls) r18Controls.style.display = 'none';
@@ -1902,10 +1936,44 @@ function adjustRotationSpeed(value) {
     }
 }
 
+// 新增：控制面板切换函数
+function toggleControlPanel() {
+    const panel = document.getElementById('control-panel');
+    const toggleBtn = document.getElementById('toggle-panel-btn');
+    const toggleIcon = document.getElementById('toggle-icon');
+    
+    if (!panel) return;
+    
+    if (panel.classList.contains('panel-hidden')) {
+        // 显示面板
+        panel.classList.remove('panel-hidden');
+        toggleIcon.textContent = '≡';
+        toggleIcon.style.transform = 'rotate(0deg)';
+        toggleBtn.style.right = '220px'; // 控制面板显示时，按钮位于左侧
+        try {
+            localStorage.setItem('controlPanelHidden', 'false');
+        } catch (e) {
+            console.log('无法保存控制面板状态:', e.message);
+        }
+    } else {
+        // 隐藏面板
+        panel.classList.add('panel-hidden');
+        toggleIcon.textContent = '≡';
+        toggleIcon.style.transform = 'rotate(180deg)';
+        toggleBtn.style.right = '20px'; // 控制面板隐藏时，按钮移到右侧
+        try {
+            localStorage.setItem('controlPanelHidden', 'true');
+        } catch (e) {
+            console.log('无法保存控制面板状态:', e.message);
+        }
+    }
+}
+
 // 暴露给 HTML调用的函数
 window.setRandomBackground = setRandomBackground;
 window.refreshAllCardBackgrounds = refreshAllCardBackgrounds;
 window.toggleR18Mode = toggleR18Mode; // 新增：暴露切换R18模式的函数
 window.adjustRotationSpeed = adjustRotationSpeed; // 新增：暴露调整旋转速度的函数
+window.toggleControlPanel = toggleControlPanel; // 新增：暴露控制面板切换函数
 
 init();

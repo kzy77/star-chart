@@ -23,9 +23,9 @@
         <p>本代码均由AI生成，如有问题，请反馈给AI</p>
     </div>
     
-    <!-- 控制面板（默认显示，R18模式仅在开发者工具下显示） -->
-    <div id="background-switcher">
-        <h3>背景控制面板</h3>
+    <!-- 控制面板（默认隐藏，R18模式仅在开发者工具下显示） -->
+    <div id="control-panel" class="panel-hidden">
+        <h3>控制面板</h3>
         <button onclick="setRandomBackground()">随机切换背景</button>
         <button onclick="refreshAllCardBackgrounds()">刷新所有卡片背景</button>
         <div id="r18-controls" style="display: none; margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
@@ -39,6 +39,11 @@
                 <span id="speed-value" style="color: white; margin-left: 10px; min-width: 40px; text-align: right;">0.15</span>
             </div>
         </div>
+    </div>
+    
+    <!-- 控制面板切换按钮 -->
+    <div id="toggle-panel-btn" onclick="toggleControlPanel()">
+        <span id="toggle-icon">≡</span>
     </div>
     
     <script type="module" src="main.js"></script>
@@ -71,7 +76,7 @@
             transition: color 0.5s ease, text-shadow 0.5s ease;
         }
         
-        #background-switcher {
+        #control-panel {
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -81,9 +86,10 @@
             color: white;
             font-family: 'Orbitron', sans-serif;
             z-index: 1000;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
         
-        #background-switcher button {
+        #control-panel button {
             background: linear-gradient(135deg, #9370DB, #4B0082);
             border: none;
             color: white;
@@ -97,10 +103,43 @@
             width: 100%;
         }
         
-        #background-switcher button:hover {
+        #control-panel button:hover {
             background: linear-gradient(135deg, #B19CD9, #663399);
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        #toggle-panel-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #9370DB, #4B0082);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        #toggle-panel-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        
+        #toggle-icon {
+            font-size: 24px;
+            transition: transform 0.3s ease;
+        }
+        
+        .panel-hidden {
+            transform: translateX(120%);
+            opacity: 0;
         }
         
         .star-trail {
