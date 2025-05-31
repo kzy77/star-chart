@@ -1649,9 +1649,9 @@ function createParticleSystem() {
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
     
     const material = new THREE.PointsMaterial({
-        size: 4, // 增大粒子大小，使小卡片更明显
+        size: 1, // 增大粒子大小，使小卡片更明显
         transparent: true,
-        opacity: 0.8, // 稍微提高不透明度，使其更明显
+        opacity: 0.5, // 将透明度调整为50%
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         sizeAttenuation: true
