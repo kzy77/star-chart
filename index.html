@@ -42,6 +42,13 @@
             <label for="r18-toggle" style="margin-right: 10px; color: white; font-size: 14px;">R18模式:</label>
             <input type="checkbox" id="r18-toggle" onchange="toggleR18Mode(this.checked)">
         </div>
+        <div style="margin-top: 10px; display: flex; flex-direction: column;">
+            <label for="rotation-speed" style="color: white; font-size: 14px; margin-bottom: 5px;">旋转速度:</label>
+            <div style="display: flex; align-items: center;">
+                <input type="range" id="rotation-speed" min="0.01" max="0.3" step="0.01" value="0.15" style="flex-grow: 1;" oninput="adjustRotationSpeed(this.value)">
+                <span id="speed-value" style="color: white; margin-left: 10px; min-width: 40px; text-align: right;">0.15</span>
+            </div>
+        </div>
         <button onclick="document.getElementById('test-proxy').style.display='block'">显示代理测试</button>
     </div>
     

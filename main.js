@@ -11,6 +11,7 @@ let hoveredCardIndex = null;
 let starTrailCount = 0;
 const MAX_STAR_TRAILS = 10;
 let isR18ModeEnabled = false; // 新增：R18模式状态，默认为关闭
+let rotationSpeed = 0.15; // 新增：卡片旋转速度系数，默认为0.15
 
 // 音效系统
 let audioContext;
@@ -796,6 +797,21 @@ function createCards() {
 
 // 修改初始化函数
 async function init() {
+    // 从本地存储加载旋转速度设置
+    try {
+        const savedSpeed = localStorage.getItem('rotationSpeed');
+        if (savedSpeed !== null) {
+            rotationSpeed = parseFloat(savedSpeed);
+            // 更新滑动条和显示值
+            const speedSlider = document.getElementById('rotation-speed');
+            const speedValue = document.getElementById('speed-value');
+            if (speedSlider) speedSlider.value = rotationSpeed;
+            if (speedValue) speedValue.textContent = rotationSpeed.toFixed(2);
+        }
+    } catch (e) {
+        console.log('无法加载保存的旋转速度:', e.message);
+    }
+    
     // 先设置默认背景
     setDefaultBackground();
     
@@ -1548,10 +1564,10 @@ function animate() {
         let angle;
         if (window.cardsPaused) {
             // 卡片暂停时，使用暂停开始时的角度
-            angle = meta.angle - (window.pauseStartTime - (window.pauseDuration || 0)) * 0.3;
+            angle = meta.angle - (window.pauseStartTime - (window.pauseDuration || 0)) * rotationSpeed;
         } else {
             // 正常旋转，考虑累计的暂停时间
-            angle = meta.angle - (time - (window.pauseDuration || 0)) * 0.3;
+            angle = meta.angle - (time - (window.pauseDuration || 0)) * rotationSpeed;
         }
         
         // 3D椭圆轨迹，突出由远及近的视觉效果
@@ -1868,9 +1884,26 @@ async function toggleR18Mode(isChecked) {
     showNotification(`R18模式已${modeText}，背景图已刷新。`, 'success');
 }
 
+// 新增：调整旋转速度的函数
+function adjustRotationSpeed(value) {
+    rotationSpeed = parseFloat(value);
+    // 更新显示值
+    const speedValueElement = document.getElementById('speed-value');
+    if (speedValueElement) {
+        speedValueElement.textContent = rotationSpeed.toFixed(2);
+    }
+    // 可选：保存到本地存储
+    try {
+        localStorage.setItem('rotationSpeed', rotationSpeed);
+    } catch (e) {
+        console.log('无法保存旋转速度设置:', e.message);
+    }
+}
+
 // 暴露给 HTML调用的函数
 window.setRandomBackground = setRandomBackground;
 window.refreshAllCardBackgrounds = refreshAllCardBackgrounds;
 window.toggleR18Mode = toggleR18Mode; // 新增：暴露切换R18模式的函数
+window.adjustRotationSpeed = adjustRotationSpeed; // 新增：暴露调整旋转速度的函数
 
 init();
