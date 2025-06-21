@@ -145,11 +145,11 @@ export const genshinCharacters = [
     },
     {
         name: '北斗',
-        url: 'https://today.chunkj.dpdns.org',
+        url: 'https://awesome-ollama.chunkj.dpdns.org',
         element: '雷',
         rarity: 4,
         color: '#3F51B5',
-        description: '热点备用服务',
+        description: 'Ollama模型服务',
         vision: '雷',
         weapon: '双手剑',
         region: '璃月',
